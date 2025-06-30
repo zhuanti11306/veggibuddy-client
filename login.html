@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>簡易登入觸發</title>
+</head>
+<body>
+  <h2>帳號密碼登入</h2>
+  <input type="email" id="email" placeholder="Email" />
+  <br />
+  <input type="password" id="password" placeholder="Password" />
+  <br />
+  <button id="loginBtn">登入</button>
+  <button id="registerBtn">註冊</button>
+
+  <h2>Google 登入</h2>
+  <button id="googleLoginBtn">用 Google 登入</button>
+
+  <h2>WebSocket 測試</h2>
+  <input type="text" id="msgInput" placeholder="輸入訊息" />
+  <button id="sendBtn">送出</button>
+  <div id="chatBox"></div>
+
+  <script type="module">
+    import { generatePetResponse, sendMessage, loginWithGoogle, login, register } from "./login.js";
+
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      try {
+        const session_token = await login(email, password);
+        await generatePetResponse(session_token);
+      } catch(error) {
+        console.error("登入失敗：", error);
+      }
+    });
+
+    document.getElementById('registerBtn').addEventListener('click', () => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      register(email, password);
+    });
+
+    document.getElementById('googleLoginBtn').addEventListener('click', async () => {
+      try {
+        const session_token = await loginWithGoogle();
+        await generatePetResponse(session_token);
+      } catch(error) {
+        console.error("登入失敗：", error);
+      }
+    });
+
+    document.getElementById("sendBtn").addEventListener("click", () => {
+      const input = document.getElementById("msgInput");
+      const message = input.value;
+      if (message) {
+        sendMessage(message);
+        input.value = "";
+      }
+    });
+
+  </script>
+</body>
+</html>
