@@ -6,6 +6,7 @@
     "background_color": "#000000",
     "theme_color": "#000000",
     "orientation": "portrait-primary",
+    "display_override": ["edge-to-edge", "minimal-ui"],
     "icons": [
         {
             "src": "/veggibuddy-client/vite.svg",
