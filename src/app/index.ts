@@ -11,8 +11,14 @@ import { beginPass, endPass } from "@/core/render/render";
 import { RenderPass } from "@/core/render/render-pass";
 
 // import type { Drawable } from "@/core/component";
-import { Container } from "@/core/component/container";
+import { Container, ContainerStyle } from "@/core/component/container";
 import { ComponentGeometry } from "@/core/component/component-2d";
+import { Label } from "@/core/component/label";
+import { BoxLayoutAlignment, BoxLayoutAxis, BoxLayoutJustify } from "@/core/component/box-layout";
+import { OptionalStyle } from "@/core/component/styled-component";
+import { ImageSource } from "@/utilities/style/url";
+
+import backGroundImage from "./background-test.png?url";
 
 class App extends Container {
 
@@ -20,11 +26,49 @@ class App extends Container {
     private static readonly screenBindGroup = getLayout(Layout.Screen).createBindGroup({ resolution: { buffer: App.screenResolutionBuffer } });
 
     private gestureTarget: GestureTarget;
+    private newCanvasSize: { width: number, height: number } = { width: 0, height: 0 };
 
     public override geometry: ComponentGeometry;
 
     constructor() {
-        super();
+        const horizontal = (style?: Exclude<OptionalStyle<ContainerStyle>, "layout">) => ({
+            layout: <const>{
+                type: "box",
+                axis: BoxLayoutAxis.horizontal,
+                align: BoxLayoutAlignment.stretch,
+                justify: BoxLayoutJustify.spaceBetween
+            },
+
+            ...style
+        });
+
+        const vertical = (style?: Exclude<OptionalStyle<ContainerStyle>, "layout">) => ({
+            layout: <const>{
+                type: "box",
+                axis: BoxLayoutAxis.vertical,
+                align: BoxLayoutAlignment.stretch,
+                justify: BoxLayoutJustify.spaceBetween
+            },
+
+            ...style
+        });
+
+        const backgound = new ImageSource(backGroundImage);
+        backgound.load().then(
+            () => this.redraw(),
+            () => this.setStyle({ background: { color: "white" }})
+        );
+
+        super(horizontal({ background: { image: backgound, color: "white" } }), [
+            new Container(vertical(), [
+                new Label("Top Left"),
+                new Label("Bottom Left")
+            ]),
+            new Container(vertical(), [
+                new Label("Top Right"),
+                new Label("Bottom Right")
+            ])
+        ]);
 
         this.gestureTarget = new GestureTarget(canvas);
 
@@ -37,21 +81,11 @@ class App extends Container {
             const { width, height } = canvas;
 
             console.log("[DBG] App resized:", width, height);
-            
-            // 更新版面
-            this.setGeometry({
-                size: { width, height },
-                position: { x: 0, y: 0 }
-            });
 
-            // 更新 Buffer 中的解析度
-            App.screenResolutionBuffer.set(
-                "resolution", 
-                vector(canvas.width, canvas.height)
-            )
+            this.newCanvasSize = { width, height };
         });
     }
-    
+
     // 實作 EventTarget 接口
 
     public addEventListener(type: string, callback: EventListenerOrEventListenerObject | null, options?: AddEventListenerOptions | boolean): void {
@@ -66,13 +100,36 @@ class App extends Container {
 
     // 重寫 Drawable 方法
 
+    public override update(deltatime: number): void {
+
+        // 更新畫布大小
+        if (this.newCanvasSize.width !== 0 && this.newCanvasSize.height !== 0) {
+            const { width, height } = this.newCanvasSize;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            // 更新幾何體大小
+            const geometry = structuredClone(this.geometry);
+            geometry.size = { width, height };
+            this.setGeometry(geometry);
+
+            // 更新屏幕解析度緩衝區
+            App.screenResolutionBuffer.set("resolution", vector(width, height));
+
+            this.newCanvasSize = { width: 0, height: 0 }; // 重置新大小
+        }
+
+        super.update(deltatime);
+    }
+
     public override render(): void {
         // 渲染介面
 
         beginPass({
             label: RenderPass.component2D,
             colorAttachments: ["canvas"],
-            defaultBindGroups: [App.screenBindGroup]
+            defaultBindGroups: [App.screenBindGroup],
         });
 
         super.render();
@@ -80,36 +137,10 @@ class App extends Container {
         endPass();
     }
 
-    public override update(deltatime: number): void {
-        super.update(deltatime);
-    }
-
     // 重寫 Component2D、Container 方法
 
     public override getGeometry(): ComponentGeometry {
         return this.geometry;
-    }
-
-    public override drawAppearance(): void {
-        super.drawAppearance(); // 清理畫布
-
-        console.log("[DBG] Drawing App appearance...");
-
-        const { width, height } = this.getGeometry().size;
-
-        this.context.fillStyle = "magenta"; // 設定背景顏色
-        this.context.fillRect(0, 0, width, height); // 填充背景
-
-        this.context.fillStyle = "cyan";
-        this.context.fillRect(0, 0, width / 2, height / 2); // 在左上角填充藍色矩形
-
-        this.context.fillStyle = "yellow";
-        this.context.fillRect(width / 2, height / 2, width / 2, height / 2); // 在右下角填充綠色矩形
-
-        this.context.fillStyle = "white";
-        this.context.beginPath();
-        this.context.arc(width / 2, height / 2, 50, 0, Math.PI * 2); // 在中心繪製白色圓形
-        this.context.fill(); // 填充圓形
     }
 
 }

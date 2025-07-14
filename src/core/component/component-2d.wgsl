@@ -17,21 +17,19 @@ struct VertexOutput {
 @vertex
 fn vertex_main(@location(0) pos: vec2f) -> VertexOutput {
     var output: VertexOutput;
-    // pos 的範圍為 0.0 至 1.0
+    // pos 的範圍為 -1.0 至 1.0
     // 將本地座標縮放到元件的畫素尺寸
     // 然後平移到元件的左上角畫素位置
     // 注意：這裡假設 geometry.position 是左上角座標
-    let world_pos = geometry.position + pos * geometry.size;
+    let normalized_pos = (pos + 1.0) * 0.5;
 
-    // 將世界畫素座標轉換為標準化設備座標 (NDC, -1.0 to 1.0)
-    let ndc_pos = vec2f(
-        (world_pos.x / screen.x) * 2.0 - 1.0,
-        (world_pos.y / screen.y) * -2.0 + 1.0  // Y 軸向下為正，所以要反轉
-    );
+    let world_pos = geometry.position + geometry.size * normalized_pos;
 
-    output.position = vec4f(ndc_pos, 0.0, 1.0);
-    output.uv = pos; 
-    
+    let screen_pos = (world_pos / screen) * 2.0 - 1.0;
+
+    output.position = vec4f(screen_pos, 0.0, 1.0);
+    output.uv = normalized_pos; // 將 UV 座標映射到 [0, 1] 範圍
+
     return output;
 }
 
@@ -39,4 +37,18 @@ fn vertex_main(@location(0) pos: vec2f) -> VertexOutput {
 fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     // 使用從 vertex shader 傳來的 uv 座標對紋理進行採樣
     return textureSample(component_texture, component_sampler, input.uv);
+
+    // var color = textureSample(component_texture, component_sampler, input.uv);
+
+    // var alpha = color.a;
+    // var oneMinusAlpha = 1.0 - alpha;
+
+    // var red = vec4f(1.0, 0.0, 0.0, 1.0); // 紅色
+
+    // var newColor = vec4f(
+    //     color.rgb * alpha + red.rgb * oneMinusAlpha,
+    //     1.0
+    // );    
+
+    // return newColor;
 }

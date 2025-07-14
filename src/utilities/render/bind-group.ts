@@ -272,7 +272,7 @@ export class BindGroup<Entries extends LayoutEntry[] = LayoutEntry[]> {
      * @param device GPUDevice
      * @returns GPUBindGroup
      */
-    public getGPUBindGroup(device: GPUDevice): GPUBindGroup {
+    public getGPUBindGroup(device: GPUDevice, renderTask: Promise<unknown>): GPUBindGroup {
         if (this.gpuBindGroup) return this.gpuBindGroup;
 
         console.log("[DBG] Creating BindGroup:", this.label);
@@ -316,7 +316,7 @@ export class BindGroup<Entries extends LayoutEntry[] = LayoutEntry[]> {
                 case "texture":
                 case "storage-texture":
                 case "read-only-texture":
-                    resource = (entryResource as Texture).getGPUTextureView(device);
+                    resource = (entryResource as Texture).getGPUTextureView(device, renderTask);
                     break;
 
                 default:

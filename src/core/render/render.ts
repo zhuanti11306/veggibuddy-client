@@ -73,16 +73,18 @@ const renderer = new class Renderer {
      */
     public run(callback: (deltatime: number) => void): void {
         this.lastStamp = null;
-        this.loop = timestamp => {
+        this.loop = async timestamp => {
             
             const deltatime = this.lastStamp ? timestamp - this.lastStamp : 0;
             this.lastStamp = timestamp;
             
             callback(deltatime); // 執行回調函數
-            
-            Texture.destroyTextures(); // 清理已銷毀的紋理
 
-            this.render(); // 渲染當前畫面
+            await this.render(); // 等待渲染完成
+            
+            await Promise.resolve(); //
+
+            Texture.destroyTextures(); // 銷毀不再使用的紋理
 
             this.loopId = requestAnimationFrame(this.loop!);
         };
@@ -102,7 +104,9 @@ const renderer = new class Renderer {
     }
 
     /** 渲染當前畫面 */
-    public render(): void {
+    public render(): Promise<void> {
+        const { promise, resolve, reject } = Promise.withResolvers<void>();
+
         const commandEncoder = device.createCommandEncoder(); // 創建命令編碼器
 
         for (const passInfo of this.passQueue) {
@@ -123,7 +127,7 @@ const renderer = new class Renderer {
 
                 for (let bindGroupIndex = 0; bindGroupIndex < render.pipeline.bindGroupCount; bindGroupIndex++) {
                     const bindGroup = render.bindGroups?.[bindGroupIndex] ?? passInfo.defaultBindGroups?.[bindGroupIndex];
-                    if (bindGroup) renderPass.setBindGroup(bindGroupIndex, bindGroup.getGPUBindGroup(device)); // TODO: 動態位置
+                    if (bindGroup) renderPass.setBindGroup(bindGroupIndex, bindGroup.getGPUBindGroup(device, promise)); // TODO: 動態位置
                 }
 
                 const { count, vertices, indices } = typeof render.buffer === "string" ? VertexArray.getVertexArray(render.buffer).getRegisteredLayout(render.buffer) : render.buffer;
@@ -143,12 +147,12 @@ const renderer = new class Renderer {
 
         device.queue.submit([commandEncoder.finish()]);
 
-        // device.queue.onSubmittedWorkDone().then(() => {
-        //     Texture.destroyTextures();
-        // }); // 提交命令後清理已銷毀的紋理
-
         this.configuringStack = []; // 清空配置堆疊
         this.passQueue = []; // 清空渲染隊列
+
+        device.queue.onSubmittedWorkDone().then(resolve, reject); // 等待所有命令完成
+
+        return promise;
     }
 
     public beginPass(info: PassInfo): void {
@@ -188,12 +192,12 @@ const renderer = new class Renderer {
                 colorAttachments.push({
                     view: createCanvasView(),
                     loadOp: "clear",
-                    clearValue: [0.0, 0.0, 0.0, 1.0],
-                    storeOp: "store",
+                    clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
+                    storeOp: "store"
                 });
             } else if (attachment) {
                 const loadOp = attachment.loadOp ?? "load";
-                const clearValue = attachment.clearValue ?? (loadOp === "clear" ? [0.0, 0.0, 0.0, 1.0] : undefined);
+                const clearValue = attachment.clearValue ?? (loadOp === "clear" ? [0.0, 0.0, 0.0, 0.0] : undefined);
                 const storeOp = attachment.storeOp ?? "store";
 
                 colorAttachments.push({ view: attachment.view, loadOp, clearValue, storeOp });
@@ -214,6 +218,10 @@ const renderer = new class Renderer {
                 colorTargets.push({
                     format: getPreferredFormat(),
                     writeMask: GPUColorWrite.ALL,
+                    blend: {
+                        color: { srcFactor: "src-alpha", dstFactor: "one-minus-src-alpha", operation: "add" },
+                        alpha: { srcFactor: "one", dstFactor: "zero", operation: "add" }
+                    }
                 });
             } else if (attachment) {
                 colorTargets.push({

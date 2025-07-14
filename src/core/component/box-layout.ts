@@ -1,6 +1,6 @@
 import { Container } from "./container";
 import { LayoutManager } from "./layout-manager";
-import { ComponentGeometry } from "./component-2d";
+import { ComponentGeometry, ComponentSize } from "./component-2d";
 
 export const enum BoxLayoutAlignment {
     start = "start",
@@ -32,19 +32,19 @@ export interface BoxLayoutOptions {
      * 佈局方向。
      * @default BoxLayoutAxis.vertical
      */
-    axis: BoxLayoutAxis; // 佈局方向
+    axis: BoxLayoutAxis | `${BoxLayoutAxis}`; // 佈局方向
 
     /** 
      * 主軸對齊方式。
      * @default BoxLayoutJustify.start
      */
-    justify: BoxLayoutJustify; // 主軸對齊方式
+    justify: BoxLayoutJustify | `${BoxLayoutJustify}`; // 主軸對齊方式
 
     /** 
      * 副軸對齊方式。
      * @default BoxLayoutAlignment.stretch
      */
-    align: BoxLayoutAlignment;
+    align: BoxLayoutAlignment | `${BoxLayoutAlignment}`; // 副軸對齊方式
 
     /** 
      * 元素之間的間距，單位為像素。
@@ -89,6 +89,8 @@ export class BoxLayout implements LayoutManager {
         grow: 0
     }
 
+    private containerPosition: { x: number, y: number } = { x: 0, y: 0 };
+
     constructor(options?: Partial<BoxLayoutOptions>) {
         this.options = {
             ...BoxLayout.defaultOptions,
@@ -96,6 +98,14 @@ export class BoxLayout implements LayoutManager {
         };
 
         switch (this.options.axis) {
+            case BoxLayoutAxis.vertical:
+                this.axisNames = {
+                    main: "height",
+                    cross: "width",
+                    mainPos: "y",
+                    crossPos: "x"
+                };
+                break;
             case BoxLayoutAxis.horizontal:
                 this.axisNames = {
                     main: "width",
@@ -104,7 +114,8 @@ export class BoxLayout implements LayoutManager {
                     crossPos: "y"
                 };
                 break;
-            case BoxLayoutAxis.vertical:
+            default:
+                console.log("[DBG] BoxLayout: Unsupported axis, defaulting to vertical.");
                 this.axisNames = {
                     main: "height",
                     cross: "width",
@@ -116,7 +127,15 @@ export class BoxLayout implements LayoutManager {
 
     }
 
-    performLayout(container: Container): void {
+    public performLayout(container: Container, isSizeDirty?: boolean): void {
+        if (isSizeDirty) {
+            this.recalculateLayout(container);
+        } else {
+            this.adjustChildPosition(container);
+        }
+    }
+
+    private recalculateLayout(container: Container): void {
         const containerGeometry = container.getGeometry();
         const children = container.getChildren();
 
@@ -153,6 +172,58 @@ export class BoxLayout implements LayoutManager {
                 child.setGeometry(geometry);
             }
         }
+    }
+
+    private adjustChildPosition(container: Container): void {
+        const lastContainerPosition = this.containerPosition;
+        const currentContainerPosition = container.getGeometry();
+
+        if (!currentContainerPosition) return;
+
+        const deltaX = currentContainerPosition.position.x - lastContainerPosition.x;
+        const deltaY = currentContainerPosition.position.y - lastContainerPosition.y;
+
+        for (const child of container.getChildren()) {
+            const childGeometry = structuredClone(child.getGeometry());
+            if (!childGeometry) continue;
+
+            // 更新子元素的位置
+            childGeometry.position.x += deltaX;
+            childGeometry.position.y += deltaY;
+            child.setGeometry(childGeometry);
+        }
+    }
+
+    public getMinSize(container: Container): ComponentSize {
+        const childrenReqs = this.getChildrenSizeRequirements(container);
+        const { main, cross } = this.axisNames;
+
+        const minMainSize = childrenReqs.reduce((sum, req) => sum + req.main.min, 0);
+        const minCrossSize = Math.max(...childrenReqs.map(req => req.cross.min));
+
+        const size = { width: 0, height: 0 };
+        size[main] = minMainSize + this.options.padding * 2; // 加上內邊距
+        size[cross] = minCrossSize + this.options.padding * 2; // 加上內邊距
+
+        return size;
+    }
+
+    public getMaxSize(): ComponentSize {
+        return { width: Infinity, height: Infinity }; // 無限大，BoxLayout 沒有最大尺寸限制
+    }
+
+    public getPreferredSize(container: Container): ComponentSize {
+        const childrenReqs = this.getChildrenSizeRequirements(container);
+        const { main, cross } = this.axisNames;
+
+        const preferredMainSize = childrenReqs.reduce((sum, req) => sum + req.main.preferred, 0);
+        const preferredCrossSize = Math.max(...childrenReqs.map(req => req.cross.preferred));
+
+        const size = { width: 0, height: 0 };
+        size[main] = preferredMainSize + this.options.padding * 2; // 加上內邊距
+        size[cross] = preferredCrossSize + this.options.padding * 2; // 加上內邊距
+
+        return size;
     }
 
     private getChildrenSizeRequirements(container: Container): ChildSizeRequirements[] {

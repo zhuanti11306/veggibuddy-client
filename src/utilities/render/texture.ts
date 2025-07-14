@@ -27,9 +27,23 @@ export interface TextureDescriptor {
 export type TextureSource = ImageBitmap | HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | OffscreenCanvas | ArrayBuffer;
 
 export abstract class Texture {
-    protected static readonly destructionQueue: Deque<GPUTexture> = new Deque(); 
-    
+    private static readonly destructionQueue: Deque<GPUTexture> = new Deque();
+
+    private currentGPUTask: Map<GPUTexture, Promise<unknown>> = new Map();
+
+    protected texture: GPUTexture | null = null;
+    protected textureView: GPUTextureView | null = null;
+    protected accessDevice: GPUDevice | null = null;
+
+    constructor() {
+        console.log(`[DBG] Texture Current GPUTask initialized:`, this.currentGPUTask);
+    }
+
     public static destroyTextures(): void {
+        if (this.destructionQueue.isEmpty()) return;
+
+        console.log("[DBG] Destroying textures:", this.destructionQueue.length);
+
         while (this.destructionQueue.length > 0) {
             const texture = this.destructionQueue.pop();
             if (texture) {
@@ -37,11 +51,78 @@ export abstract class Texture {
             }
         }
     }
-    
+
     public abstract load(): Promise<void>;
-    public abstract destroyGPUTexture(): void;
-    public abstract getGPUTexture(device: GPUDevice): GPUTexture;
-    public abstract getGPUTextureView(device: GPUDevice): GPUTextureView;
+    public abstract createGPUTexture(device: GPUDevice): GPUTexture;
+
+    protected setCurrentGPUTask(task: Promise<unknown>): void {
+        if (!this.texture)
+            return;
+
+        const existingTask = this.getCurrentGPUTask(this.texture);
+        this.currentGPUTask.set(this.texture, existingTask.then(() => task));
+    }
+
+    protected getCurrentGPUTask(texture: GPUTexture): Promise<unknown> {
+        const currentTask = this.currentGPUTask.get(texture);
+        if (currentTask)
+            return currentTask;
+        const newTask = Promise.resolve();
+        this.currentGPUTask.set(texture, newTask);
+        return newTask;
+    }
+
+    protected clearCurrentGPUTask(texture: GPUTexture): void {
+        this.currentGPUTask.delete(texture);
+    }
+
+    public getGPUTexture(device: GPUDevice): GPUTexture {
+        if (this.accessDevice !== device) {
+            if (!this.accessDevice) {
+                this.accessDevice = device;
+            } else {
+                throw new Error(`Texture is already used by another device.`);
+            }
+        }
+
+        return this.texture ??= this.createGPUTexture(device);
+    };
+
+
+    public getGPUTextureView(device: GPUDevice, renderTask: Promise<unknown>): GPUTextureView {
+        this.setCurrentGPUTask(renderTask);
+        return this.textureView ??= this.getGPUTexture(device).createView();
+    };
+
+    public destroyGPUTexture(): void {
+        if (this.texture) {
+            // 將 GPUTexture 添加到銷毀隊列
+            console.log("[DBG] Trying to destroy GPUTexture:", this.texture.label);
+
+            const textureToDestroy = this.texture;
+            const gpuTask = this.getCurrentGPUTask(textureToDestroy);
+
+            this.destroyGPUTextureAfterPromise(gpuTask, textureToDestroy);
+
+            this.texture = null;
+        }
+
+        if (this.textureView) {
+            this.textureView = null;
+        }
+    }
+
+    private destroyGPUTextureAfterPromise(promise: Promise<unknown>, texture: GPUTexture): Promise<void> {
+        return promise.then(() => {
+            const currentPromise = this.getCurrentGPUTask(texture);
+            if (currentPromise === promise) {
+                Texture.destructionQueue.push(texture);
+                this.clearCurrentGPUTask(texture);
+            } else {
+                this.destroyGPUTextureAfterPromise(currentPromise!, texture);
+            }
+        });
+    }
 }
 
 export class Texture2D extends Texture {
@@ -56,10 +137,6 @@ export class Texture2D extends Texture {
     public readonly flipY: boolean;
 
     private readonly size: { width: number, height: number };
-
-    private accessDevice: GPUDevice | null = null;
-    private gpuTexture: GPUTexture | null = null;
-    private gpuTextureView: GPUTextureView | null = null;
 
     public isLoaded: boolean = false;
     private source: TextureSource | null;
@@ -134,22 +211,7 @@ export class Texture2D extends Texture {
         this.destroyGPUTexture();
     }
 
-    public getGPUTextureView(device: GPUDevice): GPUTextureView {
-        if (!this.gpuTextureView)
-            this.gpuTextureView = this.getGPUTexture(device).createView();
-        return this.gpuTextureView;
-    }
-
-    public getGPUTexture(device: GPUDevice): GPUTexture {
-        if (this.accessDevice !== device) {
-            if (!this.accessDevice) {
-                this.accessDevice = device;
-            } else {
-                throw new Error(`Texture ${this.label} is already used by another device.`);
-            }
-        }
-
-        if (this.gpuTexture) return this.gpuTexture;
+    public createGPUTexture(device: GPUDevice): GPUTexture {
 
         const gpuTexture = device.createTexture({
             label: this.label,
@@ -159,8 +221,8 @@ export class Texture2D extends Texture {
             usage: this.usage,
         });
 
-        this.gpuTexture = gpuTexture;
-        this.writeTexture(); // 嘗試寫入 GPUTexture
+        this.texture = gpuTexture;
+        this.writeTexture();
 
         return gpuTexture;
     }
@@ -169,7 +231,7 @@ export class Texture2D extends Texture {
     private writeTexture() {
 
         const source = this.source;
-        const texture = this.gpuTexture;
+        const texture = this.texture;
         const device = this.accessDevice;
 
         if (!source || !texture || !device)
@@ -191,21 +253,10 @@ export class Texture2D extends Texture {
                 { source, flipY: this.flipY }, { texture }, this.size
             );
         }
-    }
 
-    public destroyGPUTexture() {
-        if (this.gpuTexture) {
-            // Texture.destructionQueue.push(this.gpuTexture); // 將 GPUTexture 添加到銷毀隊列
-            this.gpuTexture.destroy();
-            this.gpuTexture = null;
-        }
-        
-        if (this.gpuTextureView) {
-            this.gpuTextureView = null;
-        }
+        console.log(`[DBG] Texture ${this.label} written to GPUTexture with size:`, this.size);
 
-        this.accessDevice = null;
-        this.isLoaded = false;
+        this.setCurrentGPUTask(device.queue.onSubmittedWorkDone());
     }
 
     private static getBytesPerPixel(format: GPUTextureFormat): number {

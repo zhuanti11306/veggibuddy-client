@@ -31,7 +31,11 @@ export async function initContext(canvas: HTMLCanvasElement) {
         throw new Error('WebGPU not supported');
 
     const preferredFormat = navigator.gpu.getPreferredCanvasFormat();
-    context.configure({ device, format: preferredFormat });
+    context.configure({ 
+        device, 
+        format: preferredFormat,
+        alphaMode: 'premultiplied'
+     });
     
     webgpu.isInitialized = true;
     webgpu.adapterProxy.set(adapter);
