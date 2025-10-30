@@ -1,3 +1,8 @@
+/// <reference types="svelte" />
 /// <reference types="vite/client" />
-/// <reference types="@webgpu/types" />
-/// <reference types="vite-plugin-arraybuffer/types" />
+
+declare module "*.svelte" {
+    import type { Component } from "svelte";
+    const component: Component;
+    export default component;
+}
