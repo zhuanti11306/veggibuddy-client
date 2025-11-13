@@ -2,7 +2,7 @@ import type { Component } from "svelte";
 
 export interface DialogProps<T> {
     dialog: Dialog<T>;
-    closeDialog: (reason?: string) => void;
+    closeDialog: (reason: T) => void;
 }
 
 export interface DialogOption {
@@ -14,7 +14,7 @@ export class Dialog<T, P extends Record<string, any> = any> {
     public readonly id = crypto.randomUUID();
 
     public readonly component: Component<P & DialogProps<T>>;
-    public readonly props: P;
+    public readonly props: P & DialogProps<T>;
 
     public readonly lifecycle: Promise<T | void>;
     private readonly resolveLifecycle: (result?: T) => void;
@@ -24,7 +24,7 @@ export class Dialog<T, P extends Record<string, any> = any> {
 
     constructor(component: Component<P & DialogProps<T>>, props: P, options?: DialogOption) {
         this.component = component;
-        this.props = props;
+        this.props = { ...props, dialog: this, closeDialog: (value: T) => this.close(value) };
 
         this.closeByKeyboard = options?.closeByKeyboard ?? true;
         this.closeByOverlay = options?.closeByOverlay ?? true;

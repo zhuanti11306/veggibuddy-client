@@ -6,10 +6,16 @@
     import ButtonList from "./button-list.svelte";
     import ButtonListWithShortcut from "./button-list-with-shortcut.svelte";
     import GameInfo from "./game-info.svelte";
+    import { ItemId } from "$lib/config";
 
     $effect(() => {
         game.runDailyRoutine();
     });
+
+    let foodCount = $derived(
+        (game.userItems[ItemId.generalFood]?.quantity ?? 0) +
+        (game.userItems[ItemId.premiumFood]?.quantity ?? 0)
+    );
 </script>
 
 <style>
@@ -28,6 +34,7 @@
         display: block;
         width: 4.5rem;
         height: 5rem;
+        padding: 0;
         position: relative;
 
         background-color: transparent;
@@ -88,13 +95,13 @@
 
     <ButtonListWithShortcut position="bottom-right">
         {#snippet shortcuts()}
-            <button type="button" class="button shortcut-button">
+            <button type="button" class="button shortcut-button" onclick={() => foodCount > 0 && game.shortcutFeedPet()}>
                 <img src={assets.uiAssets.feed.src} alt="餵食" draggable="false">
-                <span class="label">餵食</span>
+                <span class="label">餵食 {foodCount}</span>
             </button>
 
-            <button type="button" class="button shortcut-button">
-                <img src={assets.uiAssets.chat.src} alt="對話" draggable="false">
+            <button type="button" class="button shortcut-button" onclick={() => goto("./chat")}>
+                <img src={assets.uiAssets.chat.src} alt="對話" draggable="false" style="padding: .25rem;">
                 <span class="label">對話</span>
             </button>
         {/snippet}

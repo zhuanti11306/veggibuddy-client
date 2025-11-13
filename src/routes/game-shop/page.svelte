@@ -1,7 +1,13 @@
 <script lang="ts">
+    import { CoinId, ItemId } from '$lib/config';
+    import { openDialog } from '$lib/core/dialogs';
     import { assets, game } from '$lib/services';
+    import ItemModal from './item-modal.svelte';
 
     const marketItems = game.getMarketItems();
+    const userCurrency = $derived(
+        game.userItems[CoinId.coin]?.quantity ?? 0
+    );
 
 </script>
 
@@ -54,17 +60,17 @@
         }
     }
 
-    .loading,
-    .error {
+    .loading {
+    /* .error { */
         flex-grow: 1;
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    .error {
+    /* .error {
         color: red;
-    }
+    } */
 
     .list-container {
         flex-basis: 0;
@@ -146,6 +152,25 @@
         padding: 1rem;
         background-color: #ffb969;
         border-top: .25rem solid #e4820a;
+
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .currency-icon {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+
+    .currency-amount {
+        display: flex;
+        gap: .25rem;
+        align-items: center;
+        font-size: 1.25rem;
+        padding: .25rem .5rem;
+        border-radius: .5rem;
+        background-color: #00000020;
     }
 </style>
 
@@ -163,8 +188,8 @@
         <div class="list-container">
             <div class="list">
                 {#each items as item}
-                    <!-- <button class="item" onclick={() => openDialog(itemModal, item)}> -->
-                    <button class="item">
+                    <button class="item" onclick={() => openDialog(ItemModal, { props: { item } })}>
+                    <!-- <button class="item"> -->
                         <img 
                             class="item-image" 
                             src={assets.getItemIcon(item.itemId)?.src} 
@@ -183,5 +208,10 @@
         </div>
     {/await}
 
-    <footer></footer>
+    <footer>
+        <span class="currency-amount label">
+            <img class="currency-icon" src={assets.getItemIcon(ItemId.coin).src} alt="">
+            &dollar;{userCurrency}
+        </span>
+    </footer>
 </main>

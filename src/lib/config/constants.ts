@@ -31,7 +31,7 @@ export const GAME_CONFIG = {
     }
 } as const;
 
-export const enum Pet {
+export const enum PetId {
     mushroom = "pet01",
     carrot = "pet02"
 }

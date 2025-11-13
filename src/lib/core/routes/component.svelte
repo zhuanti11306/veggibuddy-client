@@ -7,6 +7,7 @@
     import Routes from "./component.svelte";
 
     interface $$Props {
+        preload?: "all";
         load?: Component;
         error?: Component;
         routes: RouteEntry[];
@@ -14,7 +15,7 @@
         fallback?: Component;
     }
 
-    const { load, error, routes, base = "/", fallback }: $$Props = $props();
+    const { preload, load, error, routes, base = "/", fallback }: $$Props = $props();
 
     let route = $state(getCurrentRoute());
 
@@ -48,6 +49,7 @@
 <svelte:window on:hashchange={() => route = getCurrentRoute()} />
 
 {#if currentRoute}
+    <!-- {#await Promise.all([currentRoute.getComponent(), currentRoute.getProps?.(), preload === "all" && routes.forEach(r => r.getComponent())])} -->
     {#await Promise.all([currentRoute.getComponent(), currentRoute.getProps?.()])}
         {#if load}
             {@const LoadComponent = load}
@@ -56,7 +58,7 @@
     {:then [RouteComponent, routeProps]}
         <RouteComponent {params} {query} {...routeProps} >
             {#if currentRoute.children}
-                <Routes {load} {error} {fallback} routes={currentRoute.children} base={"/" + resolve(base, currentRoute.path).path.join("/")} />
+                <Routes {...{preload, load, error, fallback}} routes={currentRoute.children} base={"/" + resolve(base, currentRoute.path).path.join("/")} />
             {/if}
         </RouteComponent>
     {:catch err}

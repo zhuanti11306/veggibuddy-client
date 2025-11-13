@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Pet } from "$lib/config";
+    import { PetId } from "$lib/config";
     import { game } from "$lib/services";
     import type { DialogProps } from "$lib/core/dialogs";
 
@@ -9,7 +9,7 @@
     let loading = $state<boolean>(false);
 
     let nickname = $state<string>("");
-    let pet = $state<{ name: string, type: Pet } | null>(null);
+    let pet = $state<{ name: string, type: PetId } | null>(null);
 
     function handleNicknameInput(event: Event) {
         const target = event.target as HTMLInputElement;
@@ -20,11 +20,11 @@
         const target = event.target as HTMLInputElement;
         
         const petNames = {
-            carrot: "蘿蔔",
-            mushroom: "香菇"
+            [PetId.carrot]: "蘿蔔",
+            [PetId.mushroom]: "香菇"
         };
 
-        pet = { name: petNames[target.value as keyof typeof petNames], type: target.value as Pet };
+        pet = { name: petNames[target.value as keyof typeof petNames], type: target.value as PetId };
     }
 
     async function handleFinish() {
@@ -175,8 +175,8 @@
                     <span>寵物</span>
                     <select class="input" name="pet" oninput={handlePetInput}>
                         <option value="" disabled selected>請選擇您的寵物</option>
-                        <option value="carrot">蘿蔔</option>
-                        <option value="mushroom">香菇</option>
+                        <option value={PetId.mushroom}>香菇</option>
+                        <option value={PetId.carrot}>蘿蔔</option>
                     </select>
                 </label>
                 <div class="spacer"></div>

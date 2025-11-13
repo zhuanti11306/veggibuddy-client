@@ -20,6 +20,8 @@
 
     .level-container {
         display: flex;
+        margin-right: -2rem;
+        margin-bottom: -2rem;
     }
 
     .level {
@@ -39,14 +41,14 @@
         gap: .25rem;
 
         .label {
-            font-size: .75rem;
+            font-size: 1rem;
             font-weight: bolder;
         }
 
         .value {            
             margin: auto 0;
 
-            font-size: 1.75rem;
+            font-size: 2rem;
             font-weight: bold;
             line-height: 1;
         }
@@ -54,9 +56,9 @@
         .progress-bar {
             width: 100%;
             background-color: #925000;
-            height: .25rem;
+            height: .5rem;
             border-radius: .125rem;
-            margin: .25rem 0;
+            margin: .5rem 0;
 
             position: relative;
 
@@ -64,9 +66,9 @@
                 width: 100%;
 
                 text-align: center;
-                font-size: .75rem;
+                font-size: 1rem;
                 font-weight: bold;
-                color: white;
+                color: black;
                 line-height: 1;
                 
                 position: absolute;

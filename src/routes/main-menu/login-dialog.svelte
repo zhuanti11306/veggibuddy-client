@@ -3,7 +3,7 @@
     import { assets } from "$lib/services";
     import type { DialogProps } from "$lib/core/dialogs";
 
-    const { dialog }: DialogProps<void> = $props();
+    const { dialog, closeDialog }: DialogProps<void> = $props();
 
     let stage1 = $state<HTMLFormElement | null>(null);
     let stage2 = $state<HTMLFormElement | null>(null);
@@ -51,6 +51,8 @@
             stage2Error = undefined;
 
             await signInWithEmailAndPassword(loginData.email, loginData.password);
+
+            closeDialog();
         } catch (error) {
             stage2Error = "登入失敗，請檢查您的電子郵件和密碼是否正確。";
         } finally {

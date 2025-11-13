@@ -1,5 +1,7 @@
 <script lang="ts">
+    import { openDialog } from "$lib/core/dialogs";
     import { assets, game } from "$lib/services";
+    import ItemModal from "./item-modal.svelte";
 
     // import type { UserItem } from "$lib/apis";
     // import { closeDialog, closeDialogByComponent, openDialog } from "$lib/components/dialog";
@@ -98,17 +100,17 @@
         }
     }
 
-    .loading,
-    .error {
+    .loading {
+    /* .error { */
         flex-grow: 1;
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    .error {
+    /* .error {
         color: red;
-    }
+    } */
 
     .list-container {
         flex-basis: 0;
@@ -212,12 +214,12 @@
 
     {#await userItems}
         <div class="loading">載入中……</div>
-    {:then items} 
+    {:then} 
         <div class="list-container">
             <div class="list">
-                {#each items as item}
-                    <!-- <button class="item" onclick={() => openDialog(itemModal, item)}> -->
-                    <button class="item" >
+                {#each Object.values(game.userItems) as item}
+                    <button class="item" onclick={() => openDialog(ItemModal, { props: { item } })}>
+                    <!-- <button class="item" > -->
                         <img 
                             class="item-image" 
                             src={assets.getItemIcon(item.itemId)?.src ?? ""} 
@@ -228,7 +230,7 @@
                         <p class="label">&times;{item.quantity}</p>
                     </button>
                 {/each}
-                {#each Array.from({ length: Math.max(0, 24 - (items?.length ?? 0)) }) as slot}
+                {#each Array.from({ length: Math.max(0, 24 - (Object.keys(game.userItems).length ?? 0)) }) as slot}
                     <div class="empty-item">
                         <div class="empty-item-img"></div>
                     </div>

@@ -1,5 +1,5 @@
 import { getCurrentUser } from "./auth";
-import { ENV, isDev, ItemId, Pet } from "../config";
+import { ENV, isDev, ItemId, PetId } from "../config";
 import type { MarketItem, UserItem, UserPetInfo, UserCurrency, PetIntro } from "$lib/services";
 
 export const apiBase = ENV.API.BASE_URL;
@@ -33,15 +33,15 @@ export const apiInfo = <const>{
         path: "/user/login",
         auth: true,
         params: void 0,
-        response: null! as ApiUserLoginResponse
+        response: null! as ApiResponse.UserLoginOrSetup
     },
 
     [Api.userSetup]: {
         method: "POST",
         path: "/user/build",
         auth: true,
-        params: null! as ApiUserSetupParams,
-        response: null! as ApiUserSetupResponse
+        params: null! as ApiParam.UserSetup,
+        response: null! as ApiResponse.UserLoginOrSetup
     },
 
     [Api.userGetItems]: {
@@ -49,15 +49,15 @@ export const apiInfo = <const>{
         path: "/user/items",
         auth: true,
         params: void 0,
-        response: null! as ApiGetUserItemsResponse
+        response: null! as ApiResponse.GetUserItems
     },
 
     [Api.userGainCurrency]: {
         method: "POST",
         path: "/user/wallet/add",
         auth: true,
-        params: null! as ApiUserGainCurrencyParams,
-        response: null! as ApiUserGainCurrencyResponse
+        params: null! as ApiParam.UserGainCurrency,
+        response: null! as ApiResponse.UserGainCurrency
     },
 
     [Api.chatGetToken]: {
@@ -65,15 +65,15 @@ export const apiInfo = <const>{
         path: "/chat/get",
         auth: true,
         params: void 0,
-        response: null! as ApiGetChatTokenResponse
+        response: null! as ApiResponse.GetChatToken
     },
 
     [Api.userFeedPet]: {
         method: "POST",
         path: "/user/pet/grow",
         auth: true,
-        params: null! as ApiFeedPetParams,
-        response: null! as ApiFeedPetResponse
+        params: null! as ApiParam.FeedPet,
+        response: null! as ApiResponse.FeedPet
     },
 
     [Api.userGetPet]: {
@@ -81,7 +81,7 @@ export const apiInfo = <const>{
         path: "/user/pet/data",
         auth: true,
         params: void 0,
-        response: null! as ApiGetUserPetInfoResponse
+        response: null! as ApiResponse.GetUserPetInfo
     },
 
     [Api.marketGetItems]: {
@@ -89,15 +89,15 @@ export const apiInfo = <const>{
         path: "/market/items",
         auth: true,
         params: void 0,
-        response: null! as ApiGetMarketItemsResponse
+        response: null! as ApiResponse.GetMarketItems
     },
 
     [Api.marketPurchaseItems]: {
         method: "POST",
         path: "/market/purchase",
         auth: true,
-        params: null! as ApiPurchaseMarketItemsParams,
-        response: null! as ApiPurchaseMarketItemsResponse
+        params: null! as ApiParam.PurchaseMarketItems,
+        response: null! as ApiResponse.PurchaseMarketItems
     },
 
     [Api.petGetList]: {
@@ -105,65 +105,70 @@ export const apiInfo = <const>{
         path: "/pet",
         auth: false,
         params: void 0,
-        response: null! as ApiGetPetListResponse
+        response: null! as ApiResponse.GetPetList
     }
 };
 
-export type ApiUserLoginResponse = LoginInfo
-    & ApiGetUserPetInfoResponse
-    & ApiGetUserItemsResponse
-    & ApiGetMarketItemsResponse
-    & ApiUserGainCurrencyResponse;
+namespace ApiParam {
 
-export type ApiUserSetupParams = {
-    name: string;
-    pet: {
-        growthValue: 0;
-        type: Pet;
+    export type UserSetup = {
+        name: string;
+        pet: {
+            growthValue: 0;
+            type: PetId;
+        };
     };
-};
 
-export type ApiUserSetupResponse = ApiUserLoginResponse;
+    export type UserGainCurrency = {
+        action: "LOGIN" | "PET" | "TALK" | "CHAT";
+        isARMode: boolean;
+    };
 
-export type ApiGetUserItemsResponse = {
-    backpack: UserItem[];
-};
+    export type FeedPet = {
+        items: Partial<Record<ItemId, number>>;
+    };
 
-export type ApiUserGainCurrencyParams = {
-    action: "LOGIN" | "PET" | "TALK" | "CHAT";
-    isARMode: boolean;
-};
+    export type PurchaseMarketItems = {
+        items: Partial<Record<ItemId, number>>;
+    };
+}
 
-export type ApiUserGainCurrencyResponse = {
-    currencies: UserCurrency[];
-};
+export namespace ApiResponse {
 
-export type ApiGetChatTokenResponse = string;
+    export type UserLoginOrSetup = LoginInfo
+        & GetUserPetInfo
+        & GetUserItems
+        & GetMarketItems
+        & UserGainCurrency;
+    
+    export type GetUserItems = {
+        backpack: UserItem[];
+    };
 
-export type ApiGetUserPetInfoResponse = {
-    pet: UserPetInfo;
-};
+    export type UserGainCurrency = {
+        currencies: UserCurrency[];
+    };
 
-export type ApiFeedPetParams = {
-    items: Partial<Record<ItemId, number>>;
-};
+    export type GetChatToken = string;
 
-export type ApiFeedPetResponse = ApiGetUserPetInfoResponse 
-    & ApiGetUserItemsResponse;
+    export type GetUserPetInfo = {
+        pet: UserPetInfo;
+    };
 
-export type ApiGetMarketItemsResponse = {
-    market: MarketItem[];
-};
+    export type FeedPet = GetUserPetInfo & {
+        foods: UserItem[];
+    };
 
-export type ApiPurchaseMarketItemsParams = {
-    items: Partial<Record<ItemId, number>>;
-};
+    export type GetMarketItems = {
+        market: MarketItem[];
+    };
 
-export type ApiPurchaseMarketItemsResponse = ApiGetUserItemsResponse;
+    export type PurchaseMarketItems = GetUserItems;
 
-export type ApiGetPetListResponse = {
-    pets: PetIntro[];
-};
+    export type GetPetList = {
+        pets: PetIntro[];
+    };
+}
 
 export async function api<T extends Api>(name: T, params?: typeof apiInfo[T]["params"]): Promise<typeof apiInfo[T]["response"]> {
     const info = apiInfo[name];
@@ -185,7 +190,6 @@ export async function api<T extends Api>(name: T, params?: typeof apiInfo[T]["pa
     }
 
     if (params) {
-
         if (method === "GET") {
             for (const [key, value] of Object.entries(params)) {
                 url.searchParams.append(key, value as any);
@@ -193,13 +197,6 @@ export async function api<T extends Api>(name: T, params?: typeof apiInfo[T]["pa
         } else {
             headers["Content-Type"] = "application/json";
             fetchConfig.body = JSON.stringify(params);
-        }
-    }
-
-    if (isDev) {
-        console.log(`[API] ${name} headers:`, headers);
-        if (fetchConfig.body) {
-            console.log(`[API] ${name} body:`, fetchConfig.body);
         }
     }
 
@@ -225,12 +222,12 @@ if (isDev) {
             base: { api: apiBase, ws: wsBase },
 
             userLogin: () => api(Api.userLogin),
-            userSetup: (params: ApiUserSetupParams) => api(Api.userSetup, params),
+            userSetup: (params: ApiParam.UserSetup) => api(Api.userSetup, params),
             userGetItems: () => api(Api.userGetItems),
             marketGetItems: () => api(Api.marketGetItems),
-            marketPurchaseItems: (params: ApiPurchaseMarketItemsParams) => api(Api.marketPurchaseItems, params),
+            marketPurchaseItems: (params: ApiParam.PurchaseMarketItems) => api(Api.marketPurchaseItems, params),
             chatGetToken: () => api(Api.chatGetToken),
-            petFeed: (params: ApiFeedPetParams) => api(Api.userFeedPet, params)
+            petFeed: (params: ApiParam.FeedPet) => api(Api.userFeedPet, params)
         })
     });
 }
