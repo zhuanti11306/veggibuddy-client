@@ -5,8 +5,6 @@ let animationFrameId: number | null = null;
 let lastTime: number | null = null;
 
 export function addAnimationLoop(animate: (deltaTime: number, time: number) => void) {
-    console.log("Add animation loop", animations.size + 1);
-    
     animations.add(animate);
 
     if (animations.size && animationFrameId === null)

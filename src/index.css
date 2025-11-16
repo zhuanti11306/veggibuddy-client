@@ -5,6 +5,7 @@
 
 html {
     background-color: black;
+    height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 }
 
 body {
@@ -13,7 +14,7 @@ body {
     place-content: center;
     
     aspect-ratio: 4 / 7;
-    height: 100vh;
+    height: 100%;
     margin: auto;
 
     position: relative;
@@ -25,8 +26,13 @@ body {
 
 *, ::before, ::after {
     box-sizing: border-box;
+    user-select: none;
 }
 
 #app {
     display: contents;
+}
+
+img {
+    -webkit-tap-highlight-color: transparent;
 }

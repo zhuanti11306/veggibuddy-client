@@ -1,3 +1,4 @@
+
 export function sorted<T>(array: T[], key: (item: T) => string | number): T[] {
     return array.slice().sort((a, b) => {
         const keyA = key(a);

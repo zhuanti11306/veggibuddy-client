@@ -20,7 +20,8 @@
 
 		"paths": {
 			"$lib/*": ["./src/lib/*"],
-			"$assets/*": ["./src/assets/*"]
+			"$assets/*": ["./src/assets/*"],
+			"$routes/*": ["./src/routes/*"]
 		}
 	},
 	

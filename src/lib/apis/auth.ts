@@ -20,6 +20,7 @@ import {
     signInWithEmailAndPassword as firebaseSignInWithEmailAndPassword,
     createUserWithEmailAndPassword as firebaseCreateUserWithEmailAndPassword,
     signInWithPopup as firebaseSignInWithPopup,
+    signInWithRedirect as firebaseSignInWithRedirect,
     signOut as firebaseSignOut
 } from "firebase/auth";
 

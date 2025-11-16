@@ -2,13 +2,16 @@ import { Api, api } from "$lib/apis";
 import type { ApiResponse } from "$lib/apis";
 
 import { sorted } from "$lib/utils/iterate";
-import { withBatchedTask, withExistingTask, withLatestTask } from "$lib/utils/async-task";
+import { withBatchedTask, withExistingTask, withLatestTask } from "$lib/utils/async/task";
+import { FOOD_GROWTH_VALUES, ItemId, PET_LEVEL_REQUIREMENTS, type CoinId, type ItemCategory, type PetId } from "$lib/config";
+import { getDateFromTimestamp } from "$lib/utils/date";
+
+import { showFeedingEffect, showUpgradeEffect } from "$routes/game";
 
 import { itemIcons, loadItemIcons } from "./assets";
-import { ItemId, type CoinId, type ItemCategory, type PetId } from "$lib/config";
-import { getDateFromTimestamp } from "$lib/utils/date";
 import { setupPet } from "./model";
-import { assets } from ".";
+import { CommunicationManager, ConversationService } from "./communication";
+
 
 export interface UserItem {
     itemId: ItemId;
@@ -47,8 +50,8 @@ let userItemDirty = false;
 export const marketItems = $state<MarketItem[]>([]);
 let marketItemsExpire: Date | null = null;
 
-
 export const petInfo = $state<{ isLegal: false } | ({ isLegal: true } & UserPetInfo)>({ isLegal: false });
+let petInfoDirty = false;
 
 const dailyRoutineInfo = {
     hasRunTodayRoutine: true, // 預設為 true，避免每次登入時執行每日例行
@@ -223,14 +226,34 @@ export async function shortcutFeedPet(): Promise<boolean | undefined> {
 }
 
 function updateShortcutFeedPetItem(items: Partial<Record<ItemId, number>> = {}) {
-    userItemDirty = true;
+    const foodOrder = <const> [ItemId.premiumFood, ItemId.generalFood];
+    let food: ItemId.generalFood | ItemId.premiumFood | null = null;
+    
+    for (const foodId of foodOrder) {
+        if (userItems[foodId] && userItems[foodId].quantity > 0) {
+            food = foodId;
+            break;
+        }
+    }
+    
+    if (!food) return items;
 
-    if (userItems[ItemId.generalFood] && userItems[ItemId.generalFood].quantity > 0) {
-        items[ItemId.generalFood] = (items[ItemId.generalFood] ?? 0) + 1;
-        userItems[ItemId.generalFood].quantity--;
-    } else if (userItems[ItemId.premiumFood] && userItems[ItemId.premiumFood].quantity > 0) {
-        items[ItemId.premiumFood] = (items[ItemId.premiumFood] ?? 0) + 1;
-        userItems[ItemId.premiumFood].quantity--;
+    userItemDirty = true;
+    petInfoDirty = true;
+    
+    items[food] = (items[food] ?? 0) + 1;
+    userItems[food]!.quantity--;
+    showFeedingEffect();
+
+    if (petInfo.isLegal) {
+        petInfo.growthValue += FOOD_GROWTH_VALUES[food];
+
+        if (petInfo.growthValue >= petInfo.aimValue) {
+            petInfo.growthValue -= petInfo.aimValue;
+            petInfo.level++;
+            petInfo.aimValue = PET_LEVEL_REQUIREMENTS[petInfo.level] ?? petInfo.aimValue;
+            showUpgradeEffect();
+        }
     }
 
     return items;
@@ -247,7 +270,21 @@ export async function getPetIntroList(): Promise<PetIntro[] | undefined> {
     });
 }
 
-export { isLoading } from "$lib/utils/async-task";
+// 取得金幣
+export async function earnCurrency(eventName: "LOGIN" | "PET" | "TALK" | "CHAT"): Promise<boolean | undefined> {
+    return await withLatestTask(earnCurrency, async () => {
+        const response = await api(Api.userGainCurrency, { action: eventName, isARMode: false });
+        handleGainCurrency(response);
+        return true;
+    }).catch(error => {
+        console.error("[ERR] (GAME SERVICE) Earn currency failed:", error);
+        return false;
+    });
+}
+
+export function getConversation(): ConversationService {
+    return CommunicationManager.getConversation();
+}
 
 // 處理取得市集物品回應
 async function handleGetMarketItem(response: ApiResponse.GetMarketItems) {
@@ -291,8 +328,9 @@ async function handleFoodResponse(response: ApiResponse.FeedPet) {
     // 預載圖示
     await loadItemIcons(userItemIds);
 
-    userItemList.forEach(item => userItems[item.itemId] = item);
-    console.log("Updated foods:", userItems);
+    for (const item of userItemList) {
+        userItems[item.itemId] = item;
+    }
     return userItemList;
 }
 

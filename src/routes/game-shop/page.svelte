@@ -124,7 +124,7 @@
         display: block;
         width: 100%;
         aspect-ratio: 1;
-        padding: 1rem;
+        /* padding: 1rem; */
         border: 3px solid #ffaa00;
         border-radius: .5rem;
         background-color: #00000020;

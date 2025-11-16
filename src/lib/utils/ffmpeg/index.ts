@@ -1,22 +1,24 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { toBlobURL } from "@ffmpeg/util";
 
 // 使用本地檔案以避免跨域問題，下載自：
-// https://www.jsdelivr.com/package/npm/@ffmpeg/core-mt
-// https://registry.npmjs.org/@ffmpeg/core-mt/-/core-mt-0.12.10.tgz
+// https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/
 import ffmpegCore from "$assets/ffmpeg/ffmpeg-core?url";
-import ffmpegWorker from "$assets/ffmpeg/ffmpeg-core.worker?url";
 import ffmpegWasm from "$assets/ffmpeg/ffmpeg-core.wasm?url";
 
 export const ffmpeg = new FFmpeg();
+
+ffmpeg.on("log", event => {
+    console.log(`[DBG] (FFMPEG) [${event.type}] ${event.message}`);
+})
 
 export async function setupFFmpeg() {
     if (ffmpeg.loaded)
         return true;
 
     return ffmpeg.load({
-        coreURL: ffmpegCore,
-        workerURL: ffmpegWorker,
-        wasmURL: ffmpegWasm,
+        coreURL: await toBlobURL(ffmpegCore, "text/javascript"),
+        wasmURL: await toBlobURL(ffmpegWasm, "application/wasm"),
     }).then((isFirst) => {
         if (isFirst)
             console.log("[INF] (FFMPEG) FFmpeg loaded:", isFirst);
@@ -35,7 +37,11 @@ export function isFFmpegLoaded(): boolean {
 }
 
 export async function clearFFmpegContent(files: string[]) {
-    await Promise.all(files.map(file => ffmpeg.deleteFile(file))).catch(error => {
-        console.error("[ERR] (FFMPEG) Failed to clear FFmpeg files:", error);
-    });
+    const settledResults = await Promise.allSettled(files.map(file => ffmpeg.deleteFile(file)));
+    
+    for (const result of settledResults) {
+        if (result.status === "rejected") {
+            console.warn("[WRN] (FFMPEG) Failed to delete file:", result.reason);
+        }
+    }
 }
