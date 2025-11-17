@@ -2,7 +2,7 @@
 import { Api, api, wsBase } from "$lib/apis";
 import { isDev } from "$lib/config";
 
-interface ConversationMessage {
+export interface ConversationMessage {
     audio: string;
     text: string;
 }
@@ -43,8 +43,10 @@ export class ConversationService extends EventTarget {
         } catch (error) {
             this.readyState = "error";
             if (isDev) {
-                console.error("[ConversationService] 初始化失敗:", error);
+                console.error("[ERR] ConversationService 初始化失敗:", error);
             }
+
+            this.dispatchEvent(new CustomEvent("error", { detail: error }));
         }
     }
 
@@ -58,22 +60,26 @@ export class ConversationService extends EventTarget {
             const data = JSON.parse(event.data) as ConversationMessage;
 
             if (isDev) {
-                console.log("[ConversationService] 收到訊息:", data);
+                console.log("[DBG] 收到訊息:", data);
             }
-
+            
+            this.dispatchEvent(new CustomEvent("message", { detail: data }));
+            
             await this.playAudio(data.audio);
+
+            this.dispatchEvent(new CustomEvent("played"));
         });
 
         this.socket.addEventListener("close", () => {
             if (isDev) {
-                console.log("[ConversationService] WebSocket 連線關閉");
+                console.log("[DBG] WebSocket 連線關閉");
             }
             this.readyState = "error";
         });
 
         this.socket.addEventListener("error", (error) => {
             if (isDev) {
-                console.error("[ConversationService] WebSocket 錯誤:", error);
+                console.error("[ERR] ConversationService WebSocket 錯誤:", error);
             }
             this.readyState = "error";
         });
@@ -110,7 +116,7 @@ export class ConversationService extends EventTarget {
 
         } catch (error) {
             if (isDev) {
-                console.error("[ConversationService] 音訊播放失敗:", error);
+                console.error("[ERR] ConversationService 音訊播放失敗:", error);
             }
         } finally {
             this.isResponding = false;
@@ -128,17 +134,17 @@ export class ConversationService extends EventTarget {
     // 檢查是否可以發送訊息
     private canSendMessage(): boolean {
         if (!this.socket) {
-            if (isDev) console.warn("[ConversationService] WebSocket 未初始化");
+            if (isDev) console.warn("[WRN] ConversationService WebSocket 未初始化");
             return false;
         }
 
         if (this.readyState !== "ready") {
-            if (isDev) console.warn("[ConversationService] WebSocket 未就緒");
+            if (isDev) console.warn("[WRN] ConversationService WebSocket 未就緒");
             return false;
         }
 
         if (this.isResponding) {
-            if (isDev) console.warn("[ConversationService] 正在等待回應");
+            if (isDev) console.warn("[WRN] ConversationService 正在等待回應");
             return false;
         }
 
@@ -146,22 +152,30 @@ export class ConversationService extends EventTarget {
     }
 
     // 等待準備就緒
-    async waitForReady(): Promise<void> {
+    async waitForReady(): Promise<this> {
         if (this.readyState === "ready" && !this.isResponding) {
-            return;
+            return this;
         }
 
-        return new Promise<void>((resolve) => {
+        return new Promise<this>((resolve, reject) => {
             const checkReady = () => {
                 if (this.readyState === "ready" && !this.isResponding) {
                     this.removeEventListener("ready", checkReady);
                     this.removeEventListener("received", checkReady);
-                    resolve();
+                    resolve(this);
                 }
             };
 
+            const errorHandler = (event: Event) => {
+                this.removeEventListener("ready", checkReady);
+                this.removeEventListener("received", checkReady);
+                this.removeEventListener("error", errorHandler);
+                reject((event as CustomEvent).detail);
+            }
+
             this.addEventListener("ready", checkReady);
             this.addEventListener("received", checkReady);
+            this.addEventListener("error", errorHandler);
         });
     }
 
@@ -177,7 +191,7 @@ export class ConversationService extends EventTarget {
     }
 
     // 發送音訊並等待回應
-    async sendAudioAndWait(blob: Blob): Promise<void> {
+    async sendAudioAndWait(blob: Blob, event: "received" | "played" = "received"): Promise<void> {
         await this.waitForReady();
 
         if (!this.sendAudio(blob)) {
@@ -185,7 +199,7 @@ export class ConversationService extends EventTarget {
         }
 
         return new Promise((resolve) => {
-            this.addEventListener("received", () => resolve(), { once: true });
+            this.addEventListener(event, () => resolve(), { once: true });
         });
     }
 
@@ -206,9 +220,9 @@ export class ConversationService extends EventTarget {
 export class CommunicationManager {
     private static instance?: ConversationService;
 
-    static async getConversation(): Promise<ConversationService> {
+    static getConversation(): ConversationService {
         if (!this.instance) {
-            const tokenPromise = api(Api.chatGetToken);
+            const tokenPromise = api(Api.chatGetToken).then(response => response.session_token);
             this.instance = new ConversationService(tokenPromise);
         }
         return this.instance;

@@ -1,6 +1,4 @@
 
-
-
 interface AudioWaveformDrawerOptions {
     barColor: string;
     clearWhenDraw: boolean;
@@ -9,7 +7,6 @@ interface AudioWaveformDrawerOptions {
     fftsize: number;
     durationSec: number;
 }
-
 
 export class WaveformDrawer {
 

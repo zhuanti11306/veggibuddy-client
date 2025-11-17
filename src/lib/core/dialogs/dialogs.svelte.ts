@@ -10,8 +10,16 @@ export interface DialogOption {
     closeByOverlay?: boolean;
 }
 
+const getRandomId = crypto.randomUUID ? () => crypto.randomUUID() : (() => {
+    let counter = 0n;
+    return () => {
+        counter++;
+        return `dialog-${(performance.now() % 1e12).toString().padStart(12, "0")}-${counter.toString().padStart(6, "0")}`;
+    };
+})();
+
 export class Dialog<T, P extends Record<string, any> = any> {
-    public readonly id = crypto.randomUUID();
+    public readonly id = getRandomId();
 
     public readonly component: Component<P & DialogProps<T>>;
     public readonly props: P & DialogProps<T>;

@@ -7,4 +7,7 @@ export type * from "./game.svelte";
 export * as model from "./model";
 export type * from "./model";
 
+export * as interact from "./interact";
+export type * from "./interact";
+
 export * from "./communication";

@@ -27,6 +27,8 @@ import { PetSoundCategory, PetFaceCategory } from "./interact";
 export const carrot = <const> {
     model,
 
+    icon: "",
+
     sounds: {
         [PetSoundCategory.nature]: [soundNatrue1, soundNatrue2],
         [PetSoundCategory.happy]: [soundHappy1],

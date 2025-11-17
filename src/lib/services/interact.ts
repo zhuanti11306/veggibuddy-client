@@ -26,6 +26,8 @@ export async function makeSound(category: PetSoundCategory) {
     if (!categorySounds || categorySounds.length === 0)
         return;
 
+    eventBias += .125;
+
     const targetSound = categorySounds[Math.floor(Math.random() * categorySounds.length)];
     return targetSound.playSound();
 }
@@ -48,47 +50,31 @@ export async function setFace(category: PetFaceCategory) {
 }
 
 let randomEventLoop: ReturnType<typeof setInterval> | null = null;
-
+let eventBias = 0;
 
 export function startRandomEventLoop() {
     if (randomEventLoop) return;
 
-    let bias = 0;
-
     randomEventLoop = setInterval(() => {
 
-        const rand = Math.random() + bias;
-        bias -= 0.0625;
+        const rand = Math.random() + eventBias;
+        eventBias -= 0.0625;
 
-        if (rand > 0.0625)
+        if (rand > 0.125)
             return;
 
-        bias += 0.5;
+        eventBias += 0.5;
         const choice = Math.random();
 
         if (choice < 0.5) {
             setFace(PetFaceCategory.neutral);
-            if (choice < 0.25) {
+            if (choice < 0.125)
                 makeSound(PetSoundCategory.nature);
-                bias += .125;
-            }
         } else {
             setFace(PetFaceCategory.happy);
-            if (choice < 0.75) {
+            if (choice < 0.625)
                 makeSound(PetSoundCategory.happy);
-                bias += .125;
-            }
         }
-
-        // if (choice < 0.5) {
-        //     if (choice < 0.25) {
-        //         bias += .125;
-        //     }
-        // } else {
-        //     if (choice < 0.75) {
-        //         bias += .125;
-        //     }
-        // }
 
     }, 334);
 }
@@ -98,4 +84,15 @@ export function stopRandomEventLoop() {
         clearInterval(randomEventLoop);
         randomEventLoop = null;
     }
+}
+
+export function petPet() {
+    eventBias += 0.25;
+
+    setFace(PetFaceCategory.happy);
+    if (Math.random() < 0.5)
+        makeSound(PetSoundCategory.happy);
+
+    game.earnCurrency("PET");
+    navigator.vibrate?.(100);
 }

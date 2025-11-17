@@ -1,7 +1,8 @@
 <script lang="ts">
     import { PetId } from "$lib/config";
-    import { game } from "$lib/services";
+    import { assets, game, type PetIntro } from "$lib/services";
     import type { DialogProps } from "$lib/core/dialogs";
+    import { onMount } from "svelte";
 
     const { dialog }: DialogProps<void> = $props();
 
@@ -11,6 +12,28 @@
     let nickname = $state<string>("");
     let pet = $state<{ name: string, type: PetId } | null>(null);
 
+    let petIntro = $state<Map<PetId, PetIntro> | null>(null);
+
+    onMount(() => {
+        let unloaded = false;
+
+        game.getPetIntroList().then(petIntroListData => {
+            if (unloaded) return;
+            
+            const intro = new Map<PetId, PetIntro>();
+
+            if (petIntroListData) {
+                for (const pet of petIntroListData) {
+                    intro.set(pet.typeId, pet);
+                }   
+            }
+
+            petIntro = intro;
+        });
+
+        return () => unloaded = true;
+    });
+
     function handleNicknameInput(event: Event) {
         const target = event.target as HTMLInputElement;
         nickname = target.value;
@@ -19,13 +42,12 @@
     function handlePetInput(event: Event) {
         const target = event.target as HTMLInputElement;
         
-        const petNames = {
-            [PetId.carrot]: "蘿蔔",
-            [PetId.mushroom]: "香菇"
-        };
-
-        pet = { name: petNames[target.value as keyof typeof petNames], type: target.value as PetId };
+        if (!petIntro) return;
+        const petIntroItem = petIntro.get(target.value as PetId);
+        pet = petIntroItem ? { name: petIntroItem.name, type: petIntroItem.typeId } : null;
     }
+
+    $inspect({pet});
 
     async function handleFinish() {
         loading = true;
@@ -114,6 +136,46 @@
         }
     }
 
+    .select-slot {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: .5rem;
+
+        .select-label {
+            grid-column: 1 / -1;
+            font-size: .875rem;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        .select-item {
+            padding: 1rem;
+            border: 1px solid #ccc;
+            border-radius: .25rem;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+            transition: .25s;
+
+            &:has(input:checked) {
+                border-color: #007bff;
+                background-color: #e6f0ff;
+            }
+        }
+    }
+
+    .description {
+        text-align: center;
+
+        font-size: .875rem;
+        color: #555;
+        line-height: 1.5;
+
+        margin-bottom: 1rem;
+    }
+
     .button {
 
         height: 2.5rem;
@@ -171,21 +233,39 @@
             <div class="stage" bind:this={stageElements[1]}>
                 <h1>選擇寵物</h1>
                 <p>選擇一隻與你合拍的小夥伴吧！在之後的每一天，你們將會一起交流、一起成長。</p>
-                <label class="input-slot">
+                <div class="input-slot">
                     <span>寵物</span>
                     <select class="input" name="pet" oninput={handlePetInput}>
                         <option value="" disabled selected>請選擇您的寵物</option>
-                        <option value={PetId.mushroom}>香菇</option>
-                        <option value={PetId.carrot}>蘿蔔</option>
+                        {#each petIntro ? petIntro.values() : [] as petIntroItem (petIntroItem.typeId)}
+                        <option value={petIntroItem.typeId}>{petIntroItem.name}</option>
+                        {/each}
                     </select>
-                </label>
+                </div>
+                <!-- <div class="select-slot">
+                    <span class="select-label">寵物</span>
+                    {#each petIntro ? petIntro.values() : [] as petIntroItem (petIntroItem.typeId)}
+                        <label class="select-item">
+                            <input type="radio" name="pet" hidden value={petIntroItem.typeId} oninput={handlePetInput} checked={pet && pet.type === petIntroItem.typeId} />
+                            <img src={assets.getPetIcon(petIntroItem.typeId)?.src} alt={petIntroItem.name} />
+                            <span>{petIntroItem.name}</span>
+                        </label>
+                    {/each}
+                </div> -->
                 <div class="spacer"></div>
+                <div class="description">
+                    {#if pet && petIntro}
+                        {petIntro.get(pet.type)?.description}
+                    {:else}
+                        請選擇您的寵物
+                    {/if}
+                </div>
                 <button class="button primary" disabled={!pet} onclick={preventDisable(() => toStage(3))}>下一步</button>
                 <button class="button secondary" onclick={() => toStage(1)}>上一步</button>
             </div>
             <div class="stage" bind:this={stageElements[2]}>
                 <h1>最終確認</h1>
-                <p>最後，讓我們三思而行。<strong>{nickname}</strong>，我將會如此稱呼你，而你選擇的<strong>{pet?.name}</strong>將會是你的夥伴。<br>
+                <p>最後，讓我們確認一下。<strong>{nickname}</strong>，我將會如此稱呼你，而你選擇的<strong>{pet?.name}</strong>將會是你的夥伴。<br>
                     沒有問題的話，我們就可以出發啦。</p>
                 <div class="spacer"></div>
                 <button class="button primary" disabled={loading || !nickname || !pet} onclick={preventDisable(handleFinish)}>完成</button>

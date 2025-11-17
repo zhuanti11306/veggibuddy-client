@@ -31,6 +31,7 @@
 <style>
     .container {
         width: calc(100% - 2rem);
+        max-width: 450px;
         padding: .75rem;
         border: 3px solid #73a2e8;
         border-radius: .75rem;

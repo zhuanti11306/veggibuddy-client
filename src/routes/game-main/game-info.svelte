@@ -48,9 +48,9 @@
         .value {            
             margin: auto 0;
 
-            font-size: 2rem;
+            font-size: 3rem;
             font-weight: bold;
-            line-height: 1;
+            line-height: .5;
         }
 
         .progress-bar {
@@ -97,7 +97,7 @@
             <span class="label">LEVEL</span>
             <span class="value">{ petLevel }</span>
             <span class="progress-bar">
-                <span class="progress" style="width: {growthValue / aimValue * 100}%;"></span>
+                <span class="progress" style="width: {Math.min(growthValue / aimValue, 1) * 100}%;"></span>
                 <span class="progress-label">{ growthValue } / { aimValue }</span>
             </span>
         </div>

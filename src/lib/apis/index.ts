@@ -149,7 +149,9 @@ export namespace ApiResponse {
         currencies: UserCurrency[];
     };
 
-    export type GetChatToken = string;
+    export type GetChatToken = {
+        session_token: string;
+    };
 
     export type GetUserPetInfo = {
         pet: UserPetInfo;

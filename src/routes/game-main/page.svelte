@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { assets, game } from "$lib/services";
+    import { assets, game, interact } from "$lib/services";
     import { longpress } from "$lib/utils/actions/longpress";
     import { goto } from "$lib/utils/history";
     
@@ -7,6 +7,7 @@
     import ButtonListWithShortcut from "./button-list-with-shortcut.svelte";
     import GameInfo from "./game-info.svelte";
     import { ItemId } from "$lib/config";
+    import { onMount } from "svelte";
 
     $effect(() => {
         game.runDailyRoutine();
@@ -16,6 +17,11 @@
         (game.userItems[ItemId.generalFood]?.quantity ?? 0) +
         (game.userItems[ItemId.premiumFood]?.quantity ?? 0)
     );
+
+    onMount(() => {
+        interact.startRandomEventLoop();
+        return () => interact.stopRandomEventLoop();
+    });
 </script>
 
 <style>
