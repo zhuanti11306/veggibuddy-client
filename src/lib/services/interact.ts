@@ -8,25 +8,26 @@ export const enum PetSoundCategory {
 }
 
 export const enum PetFaceCategory {
-    neutral = "neutral",
-    angry = "angry",
-    happy = "happy",
-    scared = "scared",
-    surprised = "surprised",
-    sad = "sad",
-    disgusted = "disgusted"
+    neutral = "Neutral",
+    angry = "Anger",
+    happy = "Happiness",
+    scared = "Fear",
+    surprised = "Surprise",
+    sad = "Sadness",
+    disgusted = "Disgust"
 }
 
-export async function makeSound(category: PetSoundCategory) {
+export async function makeSound(category?: PetSoundCategory, bias: number = .125) {
+    
     if (!game.petInfo.isLegal)
         return;
     const sounds = assets.petAssets[game.petInfo.type].sounds;
-    const categorySounds = sounds[category];
+    const categorySounds = category ? sounds[category] : Object.values(sounds).flat();
 
     if (!categorySounds || categorySounds.length === 0)
         return;
 
-    eventBias += .125;
+    eventBias += bias;
 
     const targetSound = categorySounds[Math.floor(Math.random() * categorySounds.length)];
     return targetSound.playSound();

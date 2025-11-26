@@ -1,11 +1,15 @@
 // 語音通訊服務，待檢查
-import { Api, api, wsBase } from "$lib/apis";
-import { isDev } from "$lib/config";
+import { Api, api } from "$lib/apis";
+import { ENV, isDev } from "$lib/config";
 
 export interface ConversationMessage {
     audio: string;
-    text: string;
+    emotion: string;
 }
+
+// export const enum ConversationEmotion {
+//     Neutral = "悲傷",
+// }
 
 export class ConversationService extends EventTarget {
     private static audioContext?: AudioContext;
@@ -16,6 +20,8 @@ export class ConversationService extends EventTarget {
     private token?: string;
     private currentAudio?: AudioBufferSourceNode;
     private isResponding = false;
+
+    public autoPlay: boolean = true;
 
     constructor(token: string | Promise<string>) {
         super();
@@ -31,7 +37,7 @@ export class ConversationService extends EventTarget {
             if (ConversationService.communications.has(resolvedToken)) {
                 this.socket = ConversationService.communications.get(resolvedToken);
             } else {
-                this.socket = new WebSocket(`${wsBase}/response/${resolvedToken}`);
+                this.socket = new WebSocket(`${ENV.API.WS_BASE_URL}/response/${resolvedToken}`);
                 ConversationService.communications.set(resolvedToken, this.socket);
             }
 
@@ -62,12 +68,18 @@ export class ConversationService extends EventTarget {
             if (isDev) {
                 console.log("[DBG] 收到訊息:", data);
             }
-            
-            this.dispatchEvent(new CustomEvent("message", { detail: data }));
-            
-            await this.playAudio(data.audio);
 
-            this.dispatchEvent(new CustomEvent("played"));
+            this.dispatchEvent(new CustomEvent("message", { detail: data }));
+
+            this.dispatchEvent(new CustomEvent("received", { detail: data.emotion }));
+
+            if (!this.autoPlay) return;
+            const playTask = await this.playAudio(data.audio);
+
+            if (!playTask) return;
+            await playTask.promise;
+
+            this.dispatchEvent(new CustomEvent("played", { detail: data.emotion }));
         });
 
         this.socket.addEventListener("close", () => {
@@ -85,7 +97,7 @@ export class ConversationService extends EventTarget {
         });
     }
 
-    private async playAudio(base64Audio: string): Promise<void> {
+    private async playAudio(base64Audio: string) {
         try {
             // 解碼 base64 音訊資料
             const audioData = atob(base64Audio);
@@ -106,7 +118,7 @@ export class ConversationService extends EventTarget {
             this.currentAudio.buffer = audioBuffer;
             this.currentAudio.connect(audioContext.destination);
 
-            await new Promise<void>((resolve) => {
+            const promise = new Promise<void>((resolve) => {
                 this.currentAudio!.onended = () => {
                     this.currentAudio = undefined;
                     resolve();
@@ -114,13 +126,17 @@ export class ConversationService extends EventTarget {
                 this.currentAudio!.start(0);
             });
 
+            return {
+                promise
+            };
+
         } catch (error) {
             if (isDev) {
                 console.error("[ERR] ConversationService 音訊播放失敗:", error);
             }
         } finally {
             this.isResponding = false;
-            this.dispatchEvent(new CustomEvent("received"));
+            // this.dispatchEvent(new CustomEvent("received", { detail: emotion }) );
         }
     }
 
@@ -153,6 +169,7 @@ export class ConversationService extends EventTarget {
 
     // 等待準備就緒
     async waitForReady(): Promise<this> {
+        console.log(this);
         if (this.readyState === "ready" && !this.isResponding) {
             return this;
         }
@@ -191,16 +208,24 @@ export class ConversationService extends EventTarget {
     }
 
     // 發送音訊並等待回應
-    async sendAudioAndWait(blob: Blob, event: "received" | "played" = "received"): Promise<void> {
+    async sendAudioAndWait(blob: Blob) {
         await this.waitForReady();
 
         if (!this.sendAudio(blob)) {
             throw new Error("無法發送音訊");
         }
 
-        return new Promise((resolve) => {
-            this.addEventListener(event, () => resolve(), { once: true });
+        const received = new Promise<string>((resolve) => {
+            this.addEventListener("received", (event) => resolve((event as CustomEvent<string>).detail), { once: true });
         });
+
+        const played = this.autoPlay ? new Promise<void>((resolve) => {
+            this.addEventListener("played", () => resolve(), { once: true });
+        }) : Promise.resolve();
+
+        const emotion = await received;
+
+        return { emotion, played };
     }
 
     // 關閉連線

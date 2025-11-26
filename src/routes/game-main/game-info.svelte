@@ -4,7 +4,8 @@
     const { level: petLevel = NaN, aimValue = NaN, growthValue = NaN } = $derived(petInfo.isLegal ? petInfo : {} as Partial<UserPetInfo>);
 
     $effect(() => {
-        getPetInfo();
+        if (!petInfo.isLegal)
+            getPetInfo();
     });
 </script>
 <style>

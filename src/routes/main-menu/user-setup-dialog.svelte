@@ -52,7 +52,7 @@
     async function handleFinish() {
         loading = true;
 
-        await game.setupAccount(nickname, pet!.type);
+        await game.userSetup(nickname, pet!.type);
         
         dialog.close();
     }

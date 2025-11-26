@@ -1,10 +1,8 @@
-import * as THREE from "three";
 import type { OrbitControls } from "three/examples/jsm/Addons.js";
 
 import { addAnimationLoop, clearAnimationLoop } from "$lib/utils/animation";
 
 import { getControls, screenEffect } from "./action.svelte";
-
 export { default } from "./page.svelte";
 
 export function showFeedingEffect(): void {
@@ -28,14 +26,11 @@ export function resetConrols(smooth: boolean = false): void {
 
 function startResetConrolsAnimate(controls: OrbitControls, duration: number) {
     
-    const initialTime = performance.now();
-    
     const initalPosition = controls.object.position.clone();
     const targetPosition = controls.position0.clone();
 
     function animate(_deltaTime: unknown, time: number) {
-        const elapsed = time - initialTime;
-        const t = Math.min(elapsed / duration, 1);
+        const t = Math.min(time / duration, 1);
 
         initalPosition.lerp(targetPosition, t);
         controls.object.position.copy(initalPosition);

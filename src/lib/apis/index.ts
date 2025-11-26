@@ -1,9 +1,7 @@
-import { getCurrentUser } from "./auth";
-import { ENV, isDev, ItemId, PetId } from "../config";
+import { ENV, isDev, ItemId, PetId } from "$lib/config";
 import type { MarketItem, UserItem, UserPetInfo, UserCurrency, PetIntro } from "$lib/services";
 
-export const apiBase = ENV.API.BASE_URL;
-export const wsBase = ENV.API.WS_BASE_URL;
+import { auth, getCurrentUser } from "./auth";
 
 export interface LoginInfo {
     name: string;
@@ -24,7 +22,9 @@ export const enum Api {
     marketGetItems = "market-get-items",
     marketPurchaseItems = "market-purchase-items",
 
-    petGetList = "get-pets"
+    petGetList = "get-pets",
+
+    imageObjectDetection = "image-object-detection"
 }
 
 export const apiInfo = <const>{
@@ -32,6 +32,7 @@ export const apiInfo = <const>{
         method: "GET",
         path: "/user/login",
         auth: true,
+        json: true,
         params: void 0,
         response: null! as ApiResponse.UserLoginOrSetup
     },
@@ -40,6 +41,7 @@ export const apiInfo = <const>{
         method: "POST",
         path: "/user/build",
         auth: true,
+        json: true,
         params: null! as ApiParam.UserSetup,
         response: null! as ApiResponse.UserLoginOrSetup
     },
@@ -48,6 +50,7 @@ export const apiInfo = <const>{
         method: "GET",
         path: "/user/items",
         auth: true,
+        json: true,
         params: void 0,
         response: null! as ApiResponse.GetUserItems
     },
@@ -56,6 +59,7 @@ export const apiInfo = <const>{
         method: "POST",
         path: "/user/wallet/add",
         auth: true,
+        json: true,
         params: null! as ApiParam.UserGainCurrency,
         response: null! as ApiResponse.UserGainCurrency
     },
@@ -64,6 +68,7 @@ export const apiInfo = <const>{
         method: "GET",
         path: "/chat/get",
         auth: true,
+        json: true,
         params: void 0,
         response: null! as ApiResponse.GetChatToken
     },
@@ -72,6 +77,7 @@ export const apiInfo = <const>{
         method: "POST",
         path: "/user/pet/grow",
         auth: true,
+        json: true,
         params: null! as ApiParam.FeedPet,
         response: null! as ApiResponse.FeedPet
     },
@@ -80,6 +86,7 @@ export const apiInfo = <const>{
         method: "GET",
         path: "/user/pet/data",
         auth: true,
+        json: true,
         params: void 0,
         response: null! as ApiResponse.GetUserPetInfo
     },
@@ -88,6 +95,7 @@ export const apiInfo = <const>{
         method: "GET",
         path: "/market/items",
         auth: true,
+        json: true,
         params: void 0,
         response: null! as ApiResponse.GetMarketItems
     },
@@ -96,6 +104,7 @@ export const apiInfo = <const>{
         method: "POST",
         path: "/market/purchase",
         auth: true,
+        json: true,
         params: null! as ApiParam.PurchaseMarketItems,
         response: null! as ApiResponse.PurchaseMarketItems
     },
@@ -104,8 +113,23 @@ export const apiInfo = <const>{
         method: "GET",
         path: "/pet",
         auth: false,
+        json: true,
         params: void 0,
         response: null! as ApiResponse.GetPetList
+    },
+
+    [Api.imageObjectDetection]: {
+        method: "POST",
+        path: "/detect",
+        auth: false,
+        json: false,
+        params: null! as {
+            file: Blob;
+        },
+        response: null! as {
+            hidingPoint: { x: number; y: number; };
+            mask: string;
+        }
     }
 };
 
@@ -176,7 +200,7 @@ export async function api<T extends Api>(name: T, params?: typeof apiInfo[T]["pa
     const info = apiInfo[name];
     if (!info) throw new Error(`API endpoint ${name} not found`);
 
-    const url = new URL(`${apiBase}${info.path}`);
+    const url = new URL(`${ENV.API.BASE_URL}${info.path}`);
     const method = info.method;
     const headers: Record<string, string> = {};
 
@@ -196,12 +220,20 @@ export async function api<T extends Api>(name: T, params?: typeof apiInfo[T]["pa
             for (const [key, value] of Object.entries(params)) {
                 url.searchParams.append(key, value as any);
             }
-        } else {
+        } else if (info.json) {
             headers["Content-Type"] = "application/json";
             fetchConfig.body = JSON.stringify(params);
+        } else {
+            const body = new FormData();
+
+            for (const [key, value] of Object.entries(params)) {
+                body.append(key, value);
+            }
+
+            fetchConfig.body = body;
         }
     }
-
+    
     const response = await fetch(url.toString(), fetchConfig);
 
     if (!response.ok) {
@@ -218,10 +250,10 @@ export async function api<T extends Api>(name: T, params?: typeof apiInfo[T]["pa
 // 開發環境下的除錯工具
 if (isDev) {
     Object.assign(globalThis, {
-        apiDocs: `${apiBase}/docs`,
+        apiDocs: `${ENV.API.BASE_URL}/docs`,
         api: Object.assign((e: any, params: any) => api(e, params), {
-            docs: `${apiBase}/docs`,
-            base: { api: apiBase, ws: wsBase },
+            docs: `${ENV.API.BASE_URL}/docs`,
+            base: { api: ENV.API.BASE_URL, ws: ENV.API.WS_BASE_URL },
 
             userLogin: () => api(Api.userLogin),
             userSetup: (params: ApiParam.UserSetup) => api(Api.userSetup, params),

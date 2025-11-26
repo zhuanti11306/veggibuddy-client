@@ -6,7 +6,7 @@ import { convert } from "$lib/utils/ffmpeg/webm-to-mp3";
 import { WaveformDrawer } from "$lib/utils/waveform";
 import { addAnimationLoop, clearAnimationLoop } from "$lib/utils/animation";
 
-import { game, type ConversationService } from "$lib/services";
+import { CommunicationManager, interact, type PetFaceCategory, type ConversationService } from "$lib/services";
 
 import { resetConrols } from "$routes/game";
 
@@ -61,6 +61,11 @@ export const timer = $state({
 
 const recorderChunks: Blob[] = [];
 
+export const enum FeedbackMode {
+    Voice = "voice", // 人聲
+    Sound = "sound" // 音效
+}
+
 export const recorder = $state({
     state: RecordingState.Ungranted,
     initializing: false,
@@ -99,6 +104,29 @@ export const recorder = $state({
 
     get blob() {
         return new Blob(recorderChunks, { type: 'audio/webm' });
+    },
+
+    startRecording,
+    stopRecording,
+    pauseRecording,
+    resumeRecording,
+    initialize,
+
+    mode: FeedbackMode.Voice,
+
+    toggleMode() {
+        switch (this.mode) {
+            case FeedbackMode.Voice:
+                this.mode = FeedbackMode.Sound;
+                if (conversation)
+                    conversation.autoPlay = false;
+                break;
+            case FeedbackMode.Sound:
+                this.mode = FeedbackMode.Voice;
+                if (conversation)
+                    conversation.autoPlay = true;
+                break;
+        }
     }
 });
 
@@ -106,7 +134,7 @@ let stream: MediaStream | null = null;
 let conversation: ConversationService | null = null;
 let drawer: WaveformDrawer | null = null;
 
-export async function initialize() {
+async function initialize() {
     if (recorder.state !== RecordingState.Ungranted)
         return;
 
@@ -120,16 +148,16 @@ export async function initialize() {
     }
 
     const getMediaTask = navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => ({ stream, result: <const> InitializeResult.Success }))
-        .catch(error => ({ error, result: <const> InitializeResult.Ungranted }));
+        .then(stream => ({ stream, result: <const>InitializeResult.Success }))
+        .catch(error => ({ error, result: <const>InitializeResult.Ungranted }));
 
-    const getConversationTask = game.getConversation().waitForReady()
-        .then(conversation => ({ conversation, result: <const> InitializeResult.Success }))
-        .catch(error => ({ error, result: <const> InitializeResult.Failed }));
+    const getConversationTask = CommunicationManager.getConversation().waitForReady()
+        .then(conversation => ({ conversation, result: <const>InitializeResult.Success }))
+        .catch(error => ({ error, result: <const>InitializeResult.Failed }));
 
-    const setupFFmpegTask = ffmpeg.loaded ? Promise.resolve({ result: <const> InitializeResult.Success }) : setupFFmpeg()
-        .then(success => ({ result: success ? <const> InitializeResult.Success : <const> InitializeResult.Failed }))
-        .catch(error => ({ error, result: <const> InitializeResult.Failed }));
+    const setupFFmpegTask = ffmpeg.loaded ? Promise.resolve({ result: <const>InitializeResult.Success }) : setupFFmpeg()
+        .then(success => ({ result: success ? <const>InitializeResult.Success : <const>InitializeResult.Failed }))
+        .catch(error => ({ error, result: <const>InitializeResult.Failed }));
 
     recorder.initializing = true;
 
@@ -139,7 +167,7 @@ export async function initialize() {
     console.log("[DBG] (Media) Initialization results:", results);
 
     const resultFlag = results.reduce((flag, curr) => Math.max(curr.result, flag), InitializeResult.Success); // 取最嚴重的結果
-    
+
     switch (resultFlag) {
         case InitializeResult.Success: // 全部成功
             stream = (getMediaResult as { stream: MediaStream }).stream;
@@ -163,7 +191,7 @@ function initConversation(service: ConversationService) {
     conversation = service;
 }
 
-export function startRecording() {
+function startRecording() {
     if (recorder.state !== RecordingState.Ready)
         return;
 
@@ -180,7 +208,7 @@ export function startRecording() {
     recorder.state = RecordingState.Recording;
 }
 
-export function stopRecording(send: boolean = true) {
+function stopRecording(send: boolean = true) {
     if (recorder.state !== RecordingState.Recording && recorder.state !== RecordingState.Paused)
         return;
 
@@ -188,15 +216,15 @@ export function stopRecording(send: boolean = true) {
 
         recorder?.instance?.stop();
         recorder.instance = null;
-        
+
         recorder.state = RecordingState.Ready;
-        
+
         drawer?.setBarColor("gray");
         timer.stop();
         timer.seconds = -1;
-        
+
         return;
-    } 
+    }
 
     recorder.instance.onstop = async () => {
         if (!conversation) {
@@ -219,10 +247,26 @@ export function stopRecording(send: boolean = true) {
 
         const mp3Blob = new Blob([output], { type: 'audio/mpeg' });
 
-        await conversation?.sendAudioAndWait(mp3Blob, "played");
+        const { emotion, played: promisePlayed } = await conversation?.sendAudioAndWait(mp3Blob);
+
+        // switch (emotion) {
+        //     case ""
+        // }
+
+        interact.setFace(emotion as PetFaceCategory);
+
+        if (recorder.mode === FeedbackMode.Voice) {
+            await promisePlayed;
+        } else {
+            const iter = Math.random() < 0.5 ? 2 : 3;
+            for (let i = 0; i < iter; i++)
+                await interact.makeSound(undefined, 0);
+        }
 
         recorder.instance = null;
         recorder.state = RecordingState.Ready;
+
+        interact.setFace(interact.PetFaceCategory.neutral);
     };
 
     recorder.instance.stop();
@@ -233,7 +277,7 @@ export function stopRecording(send: boolean = true) {
     recorder.state = RecordingState.Processing;
 }
 
-export function pauseRecording() {
+function pauseRecording() {
     if (recorder.state !== RecordingState.Recording)
         return;
 
@@ -247,7 +291,7 @@ export function pauseRecording() {
     timer.pause();
 }
 
-export function resumeRecording() {
+function resumeRecording() {
     if (recorder.state !== RecordingState.Paused)
         return;
 
@@ -266,22 +310,22 @@ const drawerInitialConfig = { barColor: "gray", barWidth: 5, barGap: 5 };
 export const action: Action<HTMLCanvasElement> = function (canvas) {
 
     // 調整畫布大小
-    
+
     const observer = new ResizeObserver(() => {
         const width = canvas.clientWidth ?? 0;
         const height = canvas.clientHeight ?? 0;
-        
+
         canvas.width = width * devicePixelRatio;
         canvas.height = height * devicePixelRatio;
-        
+
         canvas.style.width = `${width}px`;
         canvas.style.height = `${height}px`;
     });
-    
+
     observer.observe(canvas);
-    
+
     // 動畫循環
-    
+
     const waveformDrawer = drawer = new WaveformDrawer(canvas, canvas.getContext("2d")!, drawerInitialConfig);
     const animation = () => waveformDrawer.draw();
     addAnimationLoop(animation);
@@ -294,7 +338,7 @@ export const action: Action<HTMLCanvasElement> = function (canvas) {
 
     return {
         destroy() {
-            observer.disconnect();
+            observer.unobserve(canvas);
             waveformDrawer.destroy();
             clearAnimationLoop(animation);
         }

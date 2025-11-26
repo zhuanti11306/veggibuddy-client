@@ -3,14 +3,12 @@ import type { ApiResponse } from "$lib/apis";
 
 import { sorted } from "$lib/utils/iterate";
 import { withBatchedTask, withExistingTask, withLatestTask } from "$lib/utils/async/task";
-import { FOOD_GROWTH_VALUES, ItemId, PET_LEVEL_REQUIREMENTS, type CoinId, type ItemCategory, type PetId } from "$lib/config";
+import { ItemId, MECHANISM_CONFIG, type ItemCategory, type PetId } from "$lib/config";
 import { getDateFromTimestamp } from "$lib/utils/date";
 
-import { showFeedingEffect, showUpgradeEffect } from "$routes/game";
+import {showFeedingEffect, showUpgradeEffect } from "$routes/game";
 
 import { itemIcons, loadItemIcons } from "./assets";
-import { setupPet } from "./model";
-import { CommunicationManager, ConversationService } from "./communication";
 
 
 export interface UserItem {
@@ -29,7 +27,7 @@ export interface UserPetInfo {
 }
 
 export interface UserCurrency {
-    coinId: CoinId;
+    coinId: ItemId.coin;
     amount: number;
 }
 
@@ -79,9 +77,9 @@ export async function userLogin(): Promise<boolean> {
 }
 
 // 設定使用者帳號
-export async function setupAccount(nickname: string, pet: PetId): Promise<boolean> {
+export async function userSetup(nickname: string, pet: PetId): Promise<boolean> {
 
-    return await withLatestTask(setupAccount, async () => {
+    return await withLatestTask(userSetup, async () => {
         const response = await api(Api.userSetup, {
             name: nickname,
             pet: {
@@ -97,7 +95,6 @@ export async function setupAccount(nickname: string, pet: PetId): Promise<boolea
         ]);
 
         gatherDailyRoutineInfo(response);
-
         return true;
     }).catch(error => {
         console.error("[ERR] (GAME SERVICE) Setup account failed:", error);
@@ -154,11 +151,6 @@ export async function getUserItems(): Promise<Partial<Record<ItemId, UserItem>> 
         console.error("[ERR] (GAME SERVICE) Get user items failed:", error);
         return undefined;
     });
-}
-
-// 取得使用者貨幣
-export function getUserCurrency(coindId: CoinId): number {
-    return userItems[coindId as string as ItemId.coin]?.quantity ?? 0;
 }
 
 // 購買市集物品
@@ -227,8 +219,8 @@ export async function shortcutFeedPet(): Promise<boolean | undefined> {
 
 function updateShortcutFeedPetItem(items: Partial<Record<ItemId, number>> = {}) {
     const foodOrder = <const> [ItemId.premiumFood, ItemId.generalFood];
-    let food: ItemId.generalFood | ItemId.premiumFood | null = null;
-    
+    let food: ItemId.generalFood | ItemId.premiumFood | null = null;    
+
     for (const foodId of foodOrder) {
         if (userItems[foodId] && userItems[foodId].quantity > 0) {
             food = foodId;
@@ -246,12 +238,12 @@ function updateShortcutFeedPetItem(items: Partial<Record<ItemId, number>> = {}) 
     showFeedingEffect();
 
     if (petInfo.isLegal) {
-        petInfo.growthValue += FOOD_GROWTH_VALUES[food];
+        petInfo.growthValue += MECHANISM_CONFIG.FOOD_GROWTH_VALUES[food];
 
         if (petInfo.growthValue >= petInfo.aimValue) {
             petInfo.growthValue -= petInfo.aimValue;
             petInfo.level++;
-            petInfo.aimValue = PET_LEVEL_REQUIREMENTS[petInfo.level] ?? petInfo.aimValue;
+            petInfo.aimValue = MECHANISM_CONFIG.PET_LEVEL_REQUIREMENTS[petInfo.level] ?? petInfo.aimValue;
             showUpgradeEffect();
         }
     }
@@ -280,10 +272,6 @@ export async function earnCurrency(eventName: "LOGIN" | "PET" | "TALK" | "CHAT")
         console.error("[ERR] (GAME SERVICE) Earn currency failed:", error);
         return false;
     });
-}
-
-export function getConversation(): ConversationService {
-    return CommunicationManager.getConversation();
 }
 
 // 處理取得市集物品回應
@@ -344,9 +332,6 @@ async function handlePetInfo(response: ApiResponse.GetUserPetInfo) {
         petInfo.type = response.pet.type;
         petInfo.growthValue = response.pet.growthValue;
         petInfo.aimValue = response.pet.aimValue;
-
-        // Load pet modal assets
-        setupPet(petInfo.type);
     }
 
     return petInfo;

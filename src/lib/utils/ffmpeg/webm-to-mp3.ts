@@ -10,7 +10,7 @@ export async function convert(inputData: Blob, signal?: AbortSignal): Promise<Ui
     }
 
     // 寫入輸入檔案
-    await ffmpeg.writeFile(FFMPEG_INPUT_FILE, await inputData.bytes(), { signal });
+    await ffmpeg.writeFile(FFMPEG_INPUT_FILE, new Uint8Array(await inputData.arrayBuffer()), { signal });
 
     // 執行轉檔指令
     await ffmpeg.exec(["-i", FFMPEG_INPUT_FILE, FFMPEG_OUTPUT_FILE], -1, { signal });

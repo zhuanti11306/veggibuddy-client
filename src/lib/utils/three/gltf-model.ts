@@ -13,8 +13,8 @@ export class GLTFModel {
     public readonly whenLoaded: Promise<GLTFModel>;
     private readonly actionQueue: (() => void)[] = [];
 
-    private readonly startLoad: () => void;
-    private readonly rejectLoad: (reason?: any) => void;
+    private startLoad?: () => void;
+    private rejectLoad?: (reason?: any) => void;
 
     constructor(url: string) {
         this.url = url;
@@ -40,7 +40,11 @@ export class GLTFModel {
     }
 
     public async load(): Promise<void> {
-        this.startLoad();
+        this.startLoad?.();
+
+        this.startLoad = undefined;
+        this.rejectLoad = undefined;
+        
         await this.whenLoaded;
     }
 

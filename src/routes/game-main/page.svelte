@@ -18,6 +18,9 @@
         (game.userItems[ItemId.premiumFood]?.quantity ?? 0)
     );
 
+    let hasBall = $derived(!!game.userItems[ItemId.ball]);
+    let hasCam = $derived(!!game.userItems[ItemId.veggieCam]);
+
     onMount(() => {
         interact.startRandomEventLoop();
         return () => interact.stopRandomEventLoop();
@@ -93,6 +96,11 @@
     </ButtonList>
 
     <ButtonList position="bottom-left">
+        <button type="button" class="button" onclick={() => goto("./chat")}>
+            <img src={assets.uiAssets.chat.src} alt="對話" draggable="false">
+            <span class="label">對話</span>
+        </button>
+
         <button type="button" class="button" onclick={() => goto("./shop")}>
             <img src={assets.uiAssets.shop.src} alt="商店" draggable="false">
             <span class="label">商店</span>
@@ -105,11 +113,18 @@
                 <img src={assets.uiAssets.feed.src} alt="餵食" draggable="false">
                 <span class="label">餵食 {foodCount}</span>
             </button>
-
-            <button type="button" class="button shortcut-button" onclick={() => goto("./chat")}>
-                <img src={assets.uiAssets.chat.src} alt="對話" draggable="false" style="padding: .25rem;">
-                <span class="label">對話</span>
-            </button>
+            {#if hasBall}
+                <button type="button" class="button shortcut-button" onclick={() => goto("./throwing-ball")}>
+                    <img src={assets.uiAssets.ball.src} alt="丟球" draggable="false">
+                    <span class="label">丟球</span>
+                </button>
+            {/if}
+            {#if hasCam}
+                <button type="button" class="button shortcut-button" onclick={() => goto("./hide-and-seek")}>
+                    <img src={assets.uiAssets.camera.src} alt="捉迷藏" draggable="false">
+                    <span class="label">捉迷藏</span>
+                </button>
+            {/if}
         {/snippet}
 
         {#snippet children(onlongpress)}

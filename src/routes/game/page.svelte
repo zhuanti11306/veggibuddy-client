@@ -1,11 +1,12 @@
 <script lang="ts">
     import { fade } from "svelte/transition";
-    import { longPress, petting, registerPettingProgressMaxDecay, renderAndInteract, screenEffect } from "./action.svelte";
+    import { longPress, petting, registerPettingProgressMaxDecay, action, screenEffect, registerPetSetup } from "./action.svelte";
     import { assets } from "$lib/services";
     
     const { children } = $props();
 
     registerPettingProgressMaxDecay();
+    registerPetSetup();
 </script>
 
 <style>
@@ -61,7 +62,7 @@
 
     .petting-progress-bar {
         position: absolute;
-        top: 30%;
+        top: 25%;
         left: 50%;
         transform: translate(-50%, -50%);
         min-width: 50%;
@@ -93,7 +94,7 @@
     }
 </style>
 
-<div class="container" use:renderAndInteract>
+<div class="container" use:action>
     <canvas></canvas>
 
     {#if longPress.state == longPress.DETECTING && longPress.progress > 0.05}

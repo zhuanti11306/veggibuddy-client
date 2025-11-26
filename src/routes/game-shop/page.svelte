@@ -1,12 +1,12 @@
 <script lang="ts">
-    import { CoinId, ItemId } from '$lib/config';
+    import { ItemId } from '$lib/config';
     import { openDialog } from '$lib/core/dialogs';
     import { assets, game } from '$lib/services';
     import ItemModal from './item-modal.svelte';
 
     const marketItems = game.getMarketItems();
     const userCurrency = $derived(
-        game.userItems[CoinId.coin]?.quantity ?? 0
+        game.userItems[ItemId.coin]?.quantity ?? 0
     );
 
 </script>

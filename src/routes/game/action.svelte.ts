@@ -2,16 +2,14 @@
 import { onMount } from "svelte";
 import type { Action } from "svelte/action";
 
-import { Raycaster, Vector2 } from "three";
+import { Camera, Vector2 } from "three";
 import type { OrbitControls } from "three/examples/jsm/Addons.js";
 
-import { assets, game, model, interact } from "$lib/services";
+import { assets, game, model, interact, type PetAsset, type SceneInitResult } from "$lib/services";
 import { addAnimationLoop, clearAnimationLoop } from "$lib/utils/animation";
-import { GAME_CONFIG } from "$lib/config";
+import { GAME_CONFIG, SceneId } from "$lib/config";
 
-let controls: OrbitControls | null = null;
-const raycaster = new Raycaster();
-const petModel = $derived(game.petInfo.isLegal ? assets.petAssets[game.petInfo.type] : null);
+let sceneInitResult = null as SceneInitResult<OrbitControls, void> | null;
 
 // 長按相關
 
@@ -70,34 +68,30 @@ export const longPress = $state({
     set state(value: number) {
         this._state = value;
 
-        if (value === LongPressState.Activated) {
-            controls && (controls.enabled = false);
+        // 設置是否可平移視角
+        sceneInitResult?.controls && (sceneInitResult.controls.enabled = value !== LongPressState.Activated);
+
+        // 觸發震動反饋
+        if (value === LongPressState.Activated)
             navigator.vibrate?.(50);
-        } else {
-            controls && (controls.enabled = true);
-        }
     },
 });
-
-let startTime: number | null = null;
 
 function startDetectingLongPress(event: PointerEvent) {
     // 記錄按下位置，並更新當前位置;
     longPress.pressPositionVec = new Vector2(event.offsetX, event.offsetY);
 
     longPress.progress = 0; // 長按進度歸零
-    startTime = performance.now();
     longPress.state = LongPressState.Detecting;
 
     addAnimationLoop(detectLongPress); // 開始偵測長按
 }
 
 function detectLongPress(_deltaTime: number, time: number) {
-    if (longPress.state != 1 || startTime === null)
+    if (longPress.state != 1)
         return clearAnimationLoop(detectLongPress);
 
-    const elapsed = time - startTime;
-    if ((longPress.progress = Math.min(elapsed / GAME_CONFIG.INTERACT.LONG_PRESS_DURATION, 1)) >= 1) {
+    if ((longPress.progress = Math.min(time / GAME_CONFIG.INTERACT.LONG_PRESS_DURATION, 1)) >= 1) {
         longPress.state = LongPressState.Activated;
         if (detectLongPress) {
             clearAnimationLoop(detectLongPress);
@@ -142,13 +136,14 @@ export const petting = $state({
 
 let petDistanceSum = 0;
 
-function detectPetting(ptr: Vector2, deltaDistance: number) {
+function detectPetting(pointer: Vector2, camera: Camera, deltaDistance: number) {
     // 僅當寵物模型已載入時才進行偵測
-    if (!petModel?.model?.object) return;
+    const petModelObject = pet?.assets.model?.object;
+    if (!petModelObject) return;
 
     // 使用 Raycaster 偵測指標是否在寵物模型上
-    raycaster.setFromCamera(ptr, model.camera);
-    const intersects = raycaster.intersectObjects([petModel.model.object], true);
+    model.raycaster.setFromCamera(pointer, camera);
+    const intersects = model.raycaster.intersectObject(petModelObject, true);
 
     if (!intersects.length) return; // 指標未在寵物模型上，忽略此次移動
 
@@ -259,18 +254,43 @@ export const screenEffect = $state({
     }
 });
 
+// 寵物載入
+
+const pet = $derived(game.petInfo.isLegal ? { id: game.petInfo.type, assets: assets.petAssets[game.petInfo.type]} : null);
+let lastPet: PetAsset | null = null;
+
+export function registerPetSetup() {
+    $effect(() => {
+        if (!pet) return;
+
+        const petId = pet.id;
+        const petAsset = pet.assets;
+
+        assets.loadCharacterAssets(petId).then(() => {
+            const scene = sceneInitResult?.scene;
+            if (!scene) return;
+
+            if (petAsset.model.object) {
+                petAsset.model.object.position.set(0, 0, 0);
+                petAsset.model.object.lookAt(0, 0, 1);
+                scene.add(petAsset.model.object);
+            };
+            if (lastPet?.model.object) scene.remove(lastPet.model.object);
+
+            lastPet = petAsset;
+        });
+    });
+}
 
 // Three.js 場景交互動作
 
-export const renderAndInteract: Action<HTMLDivElement> = function (container) {
+export const action: Action<HTMLDivElement> = function (container) {
 
     const canvas = container.querySelector("canvas");
     if (!canvas)
         throw new Error("Canvas element not found");
 
-    const { dispose, controls: orbitControls, normalizeMat } = model.createRenderer(container, canvas);
-    controls = orbitControls;
-
+    const result = sceneInitResult = model.initScene(container, canvas, SceneId.defaultRoom);
 
     function onpointerup(_event: PointerEvent) {
         longPress.state = 0;
@@ -295,8 +315,8 @@ export const renderAndInteract: Action<HTMLDivElement> = function (container) {
             case 2:
                 // 偵測撫摸
                 const { currentPositionVec, lastPositionVec } = longPress;
-                const ptr = currentPositionVec.clone().applyMatrix3(normalizeMat);
-                detectPetting(ptr, currentPositionVec.distanceTo(lastPositionVec));
+                const pointer = currentPositionVec.clone().applyMatrix3(result.pointerNormalize);
+                detectPetting(pointer, result.camera, currentPositionVec.distanceTo(lastPositionVec));
                 break;
         }
     }
@@ -307,7 +327,7 @@ export const renderAndInteract: Action<HTMLDivElement> = function (container) {
 
     return {
         destroy() {
-            dispose();
+            result.dispose();
 
             canvas.removeEventListener("pointerdown", startDetectingLongPress);
             canvas.removeEventListener("pointerup", onpointerup);
@@ -317,5 +337,5 @@ export const renderAndInteract: Action<HTMLDivElement> = function (container) {
 }
 
 export function getControls(): OrbitControls | null {
-    return controls;
+    return sceneInitResult?.controls as OrbitControls ?? null;
 }

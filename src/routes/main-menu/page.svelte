@@ -18,7 +18,6 @@
         loading = "正在載入使用者資料……";
         
         const isUserInitialized = await game.userLogin();
-        console.log("[DBG] isUserInitialized:", isUserInitialized);
 
         if (!isUserInitialized) {
             // 使用者尚未初始化，打開初始化對話框
@@ -99,6 +98,8 @@
         align-items: center;
 
         background-color: rgb(159, 234, 255);
+        background-size: cover;
+        background-position: center;
 
         width: 100%;
         height: 100%;
@@ -130,13 +131,6 @@
             calc(sqrt(2) * 1px) calc(sqrt(2) * -1px) 0 black,
             calc(sqrt(2) * 1px) calc(sqrt(2) * 1px) 0 black;
     }
-
-    .element {
-        width: 100%;
-        position: absolute;
-        bottom: 0;
-        z-index: -1;
-    }
 </style>
 
 {#await showingLoadingScreen}
@@ -151,9 +145,9 @@
         {/await}
     </div>
 {:then} 
-    <div class="main" {onclick} {onkeydown} role="button" tabindex="-1">
+    <div class="main" {onclick} {onkeydown} role="button" tabindex="-1" style:background-image={`url(${mainScreenAssets.mainScreen.src})`}>
         <img class="brand" src={mainScreenAssets.title.src} alt="菜菜小伙伴" />
-        <img class="element" src={mainScreenAssets.mainScreen.src} alt="元素1" />
+        <!-- <img class="element" src={} /> -->
         <p class="hint">{loading ?? "點擊任意位置開始"}</p>
     </div>
 {/await}

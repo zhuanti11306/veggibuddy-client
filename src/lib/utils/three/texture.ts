@@ -9,8 +9,8 @@ export class TextureAsset {
     public readonly whenLoaded: Promise<TextureAsset>;
     private readonly actionQueue: (() => void)[] = [];
 
-    private readonly startLoad: () => void;
-    private readonly rejectLoad: (reason?: any) => void;
+    private startLoad?: () => void;
+    private rejectLoad?: (reason?: any) => void;
 
     constructor(url: string) {
         this.url = url;
@@ -36,7 +36,11 @@ export class TextureAsset {
     }
 
     public async load(): Promise<void> {
-        this.startLoad();
+        this.startLoad?.();
+        
+        this.startLoad = undefined;
+        this.rejectLoad = undefined;
+        
         await this.whenLoaded;
     }
 

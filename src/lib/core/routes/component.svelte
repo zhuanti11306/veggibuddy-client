@@ -65,6 +65,8 @@
         {#if error}
             {@const ErrorComponent = error}
             <ErrorComponent {err} />
+        {:else}
+            {console.error("[ERR]", err)}
         {/if}
     {/await}
 {:else}

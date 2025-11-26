@@ -12,25 +12,22 @@ ffmpeg.on("log", event => {
     console.log(`[DBG] (FFMPEG) [${event.type}] ${event.message}`);
 })
 
+const ffmpegConfig = {
+    coreURL: await toBlobURL(ffmpegCore, "text/javascript"),
+    wasmURL: await toBlobURL(ffmpegWasm, "application/wasm")
+};
+
 export async function setupFFmpeg() {
     if (ffmpeg.loaded)
         return true;
 
-    return ffmpeg.load({
-        coreURL: await toBlobURL(ffmpegCore, "text/javascript"),
-        wasmURL: await toBlobURL(ffmpegWasm, "application/wasm"),
-    }).then((isFirst) => {
-        if (isFirst)
-            console.log("[INF] (FFMPEG) FFmpeg loaded:", isFirst);
-        return true;
-    }).catch((err) => {
-        console.error("[ERR] (FFMPEG) Failed to load FFmpeg:", err);
-        return false;
-    });
+    return ffmpeg.load(ffmpegConfig)
+        .then(() => true)
+        .catch((err) => {
+            console.error("[ERR] (FFMPEG) Failed to load FFmpeg:", err);
+            return false;
+        });
 }
-
-// window.ffmpeg = ffmpeg;
-// window.setupFFmpeg = setupFFmpeg;
 
 export function isFFmpegLoaded(): boolean {
     return ffmpeg.loaded;

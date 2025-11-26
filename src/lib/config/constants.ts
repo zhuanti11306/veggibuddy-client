@@ -2,10 +2,13 @@
 export const ENV = <const> {
     // API 配置
     API: {
-        PROTOCOL: "http",
-        WS_PROTOCOL: "ws",
+        // PROTOCOL: "http",
+        PROTOCOL: "https",
+        // WS_PROTOCOL: "ws",
+        WS_PROTOCOL: "wss",
         // HOST: "127.0.0.1:8000",
-        HOST: "192.168.28.45:8000",
+        // HOST: "192.168.28.45:8000",
+        HOST: "kp32jpc9-8000.asse.devtunnels.ms",
         get BASE_URL() { return `${this.PROTOCOL}://${this.HOST}`; },
         get WS_BASE_URL() { return `${this.WS_PROTOCOL}://${this.HOST}`; }
     },
@@ -22,6 +25,26 @@ export const ENV = <const> {
     }
 };
 
+export const enum PetId {
+    mushroom = "pet01",
+    carrot = "pet02"
+}
+
+export const enum ItemId {
+    generalFood = "generalFood",
+    premiumFood = "premiumFood",
+    coin = "coin",
+    translator = "translator",
+    veggieCam = "veggieCam",
+    ball = "ball"
+}
+
+export const enum ItemCategory {
+    currencies = "currencies",
+    foods = "foods",
+    others = "others"
+}
+
 // 遊戲配置常數
 export const GAME_CONFIG = <const> {
     // UI 常數
@@ -31,6 +54,14 @@ export const GAME_CONFIG = <const> {
         NOTIFICATION_DURATION: 5000
     },
 
+    // Three.js 常數
+    THREE: {
+        FIELD_OF_VIEW: 60,
+        NEAR_CLIPPING_PLANE: 0.0625,
+        FAR_CLIPPING_PLANE: 1024
+    },
+
+    // 互動相關常數
     INTERACT: {
         LONG_PRESS_DURATION: 1200, // 進入撫摸模式的長按時間（毫秒）
         LONG_PRESS_TROLERANCE: 8 * window.devicePixelRatio, // 長按時允許的最大移動距離（像素）
@@ -40,34 +71,24 @@ export const GAME_CONFIG = <const> {
     }
 };
 
-export const enum PetId {
-    mushroom = "pet01",
-    carrot = "pet02"
+// 遊戲機制常數
+export const MECHANISM_CONFIG = <const>{
+    // 食物成長值
+    FOOD_GROWTH_VALUES: {
+        [ItemId.generalFood]: 20,
+        [ItemId.premiumFood]: 50
+    },
+
+    // 寵物等級所需經驗值
+    PET_LEVEL_REQUIREMENTS: [120, 280, 500, 900, 1500]
 }
 
-export const enum ItemCategory {
-    currencies = "currencies",
-    foods = "foods",
-    others = "others"
+// 場景 ID 列舉
+export const enum SceneId {
+    defaultRoom = "defaultRoom",
+    throwingBallGame = "throwingGame",
+    hideNSeekGame = "hideNSeekGame"
 }
-
-export const enum ItemId {
-    generalFood = "generalFood",
-    premiumFood = "premiumFood",
-    coin = "coin",
-    translator = "translator"
-}
-
-export const enum CoinId {
-    coin = ItemId.coin
-}
-
-export const FOOD_GROWTH_VALUES = <const> {
-    [ItemId.generalFood]: 20,
-    [ItemId.premiumFood]: 50
-}
-
-export const PET_LEVEL_REQUIREMENTS = <const> [120, 280, 500, 900, 1500];
 
 // 開發模式檢查
 export const isDev = import.meta.env.DEV;

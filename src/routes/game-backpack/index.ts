@@ -10,14 +10,22 @@ export const itemFunctions: Partial<Record<ItemId, { name: string; use: () => vo
     ],
 
     [ItemId.generalFood]: [
-        { name: "餵食寵物", use: () => game.feedPet(ItemId.generalFood)}
+        { name: "餵食寵物", use: () => game.feedPet(ItemId.generalFood) }
     ],
 
     [ItemId.premiumFood]: [
-        { name: "餵食寵物", use: () => game.feedPet(ItemId.premiumFood)}
+        { name: "餵食寵物", use: () => game.feedPet(ItemId.premiumFood) }
     ],
 
     [ItemId.translator]: [
         { name: "與寵物對話", use: () => goto("/game/chat"), close: true }
+    ],
+
+    [ItemId.veggieCam]: [
+        { name: "躲貓貓", use: () => goto("/game/hide-and-seek"), close: true }
+    ],
+
+    [ItemId.ball]: [
+        { name: "丟球時間", use: () => goto("/game/throwing-ball"), close: true }
     ]
 };

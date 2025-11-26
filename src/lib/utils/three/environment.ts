@@ -1,17 +1,17 @@
 import { EquirectangularReflectionMapping, Texture } from "three";
 import { EXRLoader, HDRLoader } from "three/examples/jsm/Addons.js";
 
-export class Environmnet {
+export class Environment {
     private readonly url: string;
     private texture?: Texture;
 
     public get envMap() { return this.texture; }
 
-    public readonly whenLoaded: Promise<Environmnet>;
+    public readonly whenLoaded: Promise<Environment>;
     private readonly actionQueue: (() => void)[] = [];
 
-    private readonly startLoad: () => void;
-    private readonly rejectLoad: (reason?: any) => void;
+    private startLoad?: () => void;
+    private rejectLoad?: (reason?: any) => void;
 
     constructor(url: string, type: "hdr" | "exr" = "hdr") {
         this.url = url;
@@ -19,7 +19,7 @@ export class Environmnet {
         const { promise, resolve, reject } = Promise.withResolvers<void>();
 
         this.whenLoaded = promise
-            .then(() => Environmnet.load(this.url, type))
+            .then(() => Environment.load(this.url, type))
             .then(texture => {
                 texture.mapping = EquirectangularReflectionMapping;
                 this.texture = texture;
@@ -31,7 +31,11 @@ export class Environmnet {
     }
 
     public async load(): Promise<void> {
-        this.startLoad();
+        this.startLoad?.();
+
+        this.startLoad = undefined;
+        this.rejectLoad = undefined;
+        
         await this.whenLoaded;
     }
     
