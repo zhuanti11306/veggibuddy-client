@@ -1,6 +1,6 @@
 <script lang="ts">
     import { assets } from "$lib/services";
-    import { action, registerPetSetup, resetThrowingBallGame } from "./action.svelte";
+    import { action, backwardCam, forwardCam, registerPetSetup, resetThrowingBallGame } from "./action.svelte";
 
     registerPetSetup();
 </script>
@@ -40,6 +40,7 @@
 
         position: absolute;
         z-index: 1;
+        bottom: .5rem;
 
         img {
             width: 100%;
@@ -69,12 +70,20 @@
 
         &.left {
             left: .5rem;
-            bottom: .5rem;
         }
 
         &.right {
             right: .5rem;
-            bottom: .5rem;
+        }
+
+        &.center-left {
+            left: 50%;
+            transform: translateX(-100%);
+        }
+
+        &.center-right {
+            left: 50%;
+            transform: translateX(0%);
         }
     }
 </style>
@@ -83,12 +92,22 @@
     <canvas></canvas>
 
     <button type="button" class="button left" onclick={() => history.back()}>
-        <img src={assets.uiAssets.chat.src} alt="返回" draggable="false">
+        <img src={assets.uiAssets.backToGame.src} alt="返回" draggable="false">
         <span class="label">返回</span>
     </button>
 
+    <button type="button" class="button center-left" use:forwardCam>
+        <img src={assets.uiAssets.move.src} alt="前進" draggable="false">
+        <span class="label">前進</span>
+    </button>
+
+    <button type="button" class="button center-right" use:backwardCam>
+        <img src={assets.uiAssets.move.src} alt="後退" draggable="false" style:transform="scaleX(-1)">
+        <span class="label">後退</span>
+    </button>
+
     <button type="button" class="button right" onclick={resetThrowingBallGame}>
-        <img src={assets.uiAssets.chat.src} alt="重置" draggable="false">
+        <img src={assets.uiAssets.reset.src} alt="重置" draggable="false">
         <span class="label">重置</span>
     </button>
 </div>

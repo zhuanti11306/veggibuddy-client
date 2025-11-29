@@ -22,6 +22,7 @@
 
     h1 {
         margin: 0;
+        font-size: 1.5rem;
     }
 
     .label {
@@ -61,16 +62,11 @@
     }
 
     .loading {
-    /* .error { */
         flex-grow: 1;
         display: flex;
         align-items: center;
         justify-content: center;
     }
-
-    /* .error {
-        color: red;
-    } */
 
     .list-container {
         flex-basis: 0;
@@ -124,7 +120,6 @@
         display: block;
         width: 100%;
         aspect-ratio: 1;
-        /* padding: 1rem; */
         border: 3px solid #ffaa00;
         border-radius: .5rem;
         background-color: #00000020;
@@ -159,8 +154,9 @@
     }
 
     .currency-icon {
-        width: 1.5rem;
-        height: 1.5rem;
+        width: 2rem;
+        height: 2rem;
+        margin: -.25rem;
     }
 
     .currency-amount {

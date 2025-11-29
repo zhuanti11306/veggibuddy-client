@@ -1,6 +1,6 @@
 import type { Action } from "svelte/action";
 
-import { Camera, Mesh, MeshStandardMaterial, Object3D, Raycaster, Scene, SphereGeometry, Vector2, Vector3 } from "three";
+import { BackSide, Camera, Mesh, MeshStandardMaterial, Object3D, Raycaster, Scene, SphereGeometry, Vector2, Vector3 } from "three";
 import { Line2, LineGeometry, LineMaterial, OrbitControls } from "three/examples/jsm/Addons.js";
 
 import { SceneId } from "$lib/config";
@@ -27,6 +27,7 @@ const sceneModel = assets.sceneAssets.throwingGame.models.field;
 const pet = $derived(game.petInfo.isLegal ? { id: game.petInfo.type, assets: assets.petAssets[game.petInfo.type] } : null);
 const { promise: petPromise, resolve: resolvePet } = Promise.withResolvers<PetAsset>();
 let lastPet: PetAsset | null = null;
+const originScale = 32 / 900; 
 
 export function registerPetSetup() {
     $effect(() => {
@@ -39,13 +40,15 @@ export function registerPetSetup() {
             assets.loadCharacterAssets(petId),
             sceneModelPromise
         ]).then(([petAsset, { scene }]) => {
-            if (petAsset.model.object) {
-                scene.add(petAsset.model.object);
-                petAsset.model.object.position.set(0, 0, .5);
-                petAsset.model.object.lookAt(new Vector3(0, 0, 0));
+            const petModelObject = petAsset.model.object;
+            
+            if (petModelObject) {
+                scene.add(petModelObject);
+                petModelObject.position.set(0, 0, .5);
+                petModelObject.lookAt(new Vector3(0, 0, 0));
             }
 
-            if (lastPet?.model.object) {
+            if (lastPet?.model.object && lastPet !== petAsset) {
                 scene.remove(lastPet.model.object);
             }
 
@@ -245,15 +248,17 @@ export const action: Action<HTMLDivElement> = function (container) {
             resetAnimation();
             petModelObject.position.set(0, 0, .5);
             petModelObject.lookAt(new Vector3(0, 0, 0));
+            petModelObject.scale.set(originScale, originScale, originScale);
 
             objects.ball.position.set(0, 0.025, 0.25);
             objects.parabolaLine.visible = false;
 
             result.camera.position.set(0, .0859375, -1 / 2 ** 12);
             result.camera.lookAt(new Vector3(0, .0859375, 1));
+
+            result.controls.target.set(0, .0859375, 0);
         };
     });
-
 
     return {
         destroy() {
@@ -264,6 +269,7 @@ export const action: Action<HTMLDivElement> = function (container) {
 };
 
 function addOjbectsToScene(scene: Scene) {
+    // 球體
     const ball = new Mesh(
         new SphereGeometry(0.025, 16, 16),
         new MeshStandardMaterial({ color: 0xff5555, roughness: 0.5, metalness: 0 })
@@ -271,10 +277,12 @@ function addOjbectsToScene(scene: Scene) {
 
     ball.castShadow = true;
     ball.receiveShadow = true;
+    ball.material.shadowSide = BackSide; // 解決陰影問題
 
     scene.add(ball);
     ball.position.set(0, 0.025, 0.25);
 
+    // 拋物線軌跡線
     const parabolaLine = new Line2(
         new LineGeometry(),
         new LineMaterial({
@@ -287,7 +295,6 @@ function addOjbectsToScene(scene: Scene) {
     );
 
     parabolaLine.visible = false;
-
     scene.add(parabolaLine);
 
     return { ball, parabolaLine };
@@ -368,8 +375,6 @@ function getThrowingGameAnimation(petModelObject: Object3D, objects: ReturnType<
             //     animationState.currentChasingTarget = null;
             // }
         }
-
-        // console.log({ chasing: animationState.chasingBallState, hadFirstThrow: animationState.hadFirstThrow });
 
         if (animationState.hadFirstThrow) {
             const ballPosition = new Vector3().copy(objects.ball.position).setY(petModelObject.position.y);
@@ -533,8 +538,6 @@ function petMove(petModelObject: Object3D, from: Vector3, to: Vector3, speed: nu
 
     const finalSpeedSqueezeFactor = finalSpeed / startSpeed;
 
-    const originScale = petModelObject.scale.y;
-
     let isParabolaDone = false;
 
     const squeezeValue = 0.25;
@@ -580,3 +583,73 @@ let resetSceneGame: (() => void) | null = null;
 export function resetThrowingBallGame() {
     resetSceneGame?.();
 }
+
+export const forwardCam: Action<HTMLButtonElement> = function (button) {
+
+    function animation(deltatime: number) {
+        if (!sceneInitResult) return;
+
+        const camera = sceneInitResult.camera;
+        const controls = sceneInitResult.controls;
+
+        const forward = camera.getWorldDirection(new Vector3()).setY(0).normalize();
+        const distance = 0.3; // 每秒移動一公分
+
+        camera.position.addScaledVector(forward, distance * deltatime / 1000);
+        controls.target.addScaledVector(forward, distance * deltatime / 1000);
+    }
+
+    function onpointerdown() {
+        addAnimationLoop(animation);
+    }
+
+    function onpointerup() {
+        clearAnimationLoop(animation);
+    }
+
+    button.addEventListener("pointerdown", onpointerdown);
+    button.addEventListener("pointerup", onpointerup);
+
+    return {
+        destroy() {
+            button.removeEventListener("pointerdown", onpointerdown);
+            button.removeEventListener("pointerup", onpointerup);
+            clearAnimationLoop(animation);
+        }
+    }
+};
+
+export const backwardCam: Action<HTMLButtonElement> = function (button) {
+
+    function animation(deltatime: number) {
+        if (!sceneInitResult) return;
+
+        const camera = sceneInitResult.camera;
+        const controls = sceneInitResult.controls;
+
+        const forward = camera.getWorldDirection(new Vector3()).setY(0).normalize();
+        const distance = -0.3; // 每秒移動一公分
+
+        camera.position.addScaledVector(forward, distance * deltatime / 1000);
+        controls.target.addScaledVector(forward, distance * deltatime / 1000);
+    }
+
+    function onpointerdown() {
+        addAnimationLoop(animation);
+    }
+
+    function onpointerup() {
+        clearAnimationLoop(animation);
+    }
+
+    button.addEventListener("pointerdown", onpointerdown);
+    button.addEventListener("pointerup", onpointerup);
+
+    return {
+        destroy() {
+            button.removeEventListener("pointerdown", onpointerdown);
+            button.removeEventListener("pointerup", onpointerup);
+            clearAnimationLoop(animation);
+        }
+    }
+};

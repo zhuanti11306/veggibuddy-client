@@ -2,13 +2,12 @@
 export const ENV = <const> {
     // API 配置
     API: {
-        // PROTOCOL: "http",
-        PROTOCOL: "https",
-        // WS_PROTOCOL: "ws",
-        WS_PROTOCOL: "wss",
+        TSL: true,
+        get PROTOCOL() { return this.TSL ? "https" : "http"; },
+        get WS_PROTOCOL() { return this.TSL ? "wss" : "ws"; },
         // HOST: "127.0.0.1:8000",
         // HOST: "192.168.28.45:8000",
-        HOST: "kp32jpc9-8000.asse.devtunnels.ms",
+        HOST: "cards-responding-eleven-buzz.trycloudflare.com", // Cloudflare Tunnel URL
         get BASE_URL() { return `${this.PROTOCOL}://${this.HOST}`; },
         get WS_BASE_URL() { return `${this.WS_PROTOCOL}://${this.HOST}`; }
     },

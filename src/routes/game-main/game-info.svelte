@@ -9,15 +9,6 @@
     });
 </script>
 <style>
-    /* .info {
-        grid-area: 1 / 1 / 2 / 3;
-        justify-self: flex-start;
-        
-        display: grid;
-        grid: auto / subgrid;
-
-        pointer-events: all;
-    } */
 
     .level-container {
         display: flex;

@@ -1,20 +1,18 @@
+import { isDev } from "$lib/config";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { toBlobURL } from "@ffmpeg/util";
 
-// 使用本地檔案以避免跨域問題，下載自：
-// https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/
-import ffmpegCore from "$assets/ffmpeg/ffmpeg-core?url";
-import ffmpegWasm from "$assets/ffmpeg/ffmpeg-core.wasm?url";
-
 export const ffmpeg = new FFmpeg();
 
-ffmpeg.on("log", event => {
-    console.log(`[DBG] (FFMPEG) [${event.type}] ${event.message}`);
-})
+if (isDev) {
+    ffmpeg.on("log", event => {
+        console.log(`[DBG] (FFMPEG) [${event.type}] ${event.message}`);
+    })
+}
 
-const ffmpegConfig = {
-    coreURL: await toBlobURL(ffmpegCore, "text/javascript"),
-    wasmURL: await toBlobURL(ffmpegWasm, "application/wasm")
+const ffmpegConfig = { // 直接使用 CDN，可以利用 Blob URL 避免跨域問題
+    coreURL: await toBlobURL("https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/ffmpeg-core.js", "text/javascript"),
+    wasmURL: await toBlobURL("https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/ffmpeg-core.wasm", "application/wasm")
 };
 
 export async function setupFFmpeg() {
@@ -35,7 +33,7 @@ export function isFFmpegLoaded(): boolean {
 
 export async function clearFFmpegContent(files: string[]) {
     const settledResults = await Promise.allSettled(files.map(file => ffmpeg.deleteFile(file)));
-    
+
     for (const result of settledResults) {
         if (result.status === "rejected") {
             console.warn("[WRN] (FFMPEG) Failed to delete file:", result.reason);

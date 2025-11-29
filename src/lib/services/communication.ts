@@ -7,10 +7,6 @@ export interface ConversationMessage {
     emotion: string;
 }
 
-// export const enum ConversationEmotion {
-//     Neutral = "悲傷",
-// }
-
 export class ConversationService extends EventTarget {
     private static audioContext?: AudioContext;
     private static communications: Map<string, WebSocket> = new Map();
@@ -169,7 +165,6 @@ export class ConversationService extends EventTarget {
 
     // 等待準備就緒
     async waitForReady(): Promise<this> {
-        console.log(this);
         if (this.readyState === "ready" && !this.isResponding) {
             return this;
         }

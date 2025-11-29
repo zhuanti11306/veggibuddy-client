@@ -136,36 +136,6 @@
         }
     }
 
-    .select-slot {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: .5rem;
-
-        .select-label {
-            grid-column: 1 / -1;
-            font-size: .875rem;
-            color: #333;
-            line-height: 1.5;
-        }
-
-        .select-item {
-            padding: 1rem;
-            border: 1px solid #ccc;
-            border-radius: .25rem;
-
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-
-            transition: .25s;
-
-            &:has(input:checked) {
-                border-color: #007bff;
-                background-color: #e6f0ff;
-            }
-        }
-    }
-
     .description {
         text-align: center;
 

@@ -1,4 +1,7 @@
 <script lang="ts">
+    import { onMount } from "svelte";
+
+    import { ItemId } from "$lib/config";
     import { assets, game, interact } from "$lib/services";
     import { longpress } from "$lib/utils/actions/longpress";
     import { goto } from "$lib/utils/history";
@@ -6,20 +9,37 @@
     import ButtonList from "./button-list.svelte";
     import ButtonListWithShortcut from "./button-list-with-shortcut.svelte";
     import GameInfo from "./game-info.svelte";
-    import { ItemId } from "$lib/config";
-    import { onMount } from "svelte";
+
+    import { gotoThrowingBall } from "$routes/game-throwing-ball";
+    import { gotoHideAndSeek } from "$routes/game-hide-and-seek";
+    import { openDialog } from "$lib/core/dialogs";
+    import Settings from "./settings.svelte";
 
     $effect(() => {
         game.runDailyRoutine();
     });
 
-    let foodCount = $derived(
-        (game.userItems[ItemId.generalFood]?.quantity ?? 0) +
-        (game.userItems[ItemId.premiumFood]?.quantity ?? 0)
-    );
+    let currentFood = $derived.by(() => {
+        let count = 0;
+        let id = null;
+        
+        if (game.userItems[ItemId.premiumFood]?.quantity) {
+            id = ItemId.premiumFood;
+            count += game.userItems[ItemId.premiumFood].quantity;
+        }
+        
+        if (game.userItems[ItemId.generalFood]?.quantity) {
+            id = ItemId.generalFood;
+            count += game.userItems[ItemId.generalFood].quantity;
+        } // 優先使用普通食物餵食
+
+        return {id, count};
+    });
 
     let hasBall = $derived(!!game.userItems[ItemId.ball]);
     let hasCam = $derived(!!game.userItems[ItemId.veggieCam]);
+
+    let activateShortcuts = $derived(hasBall || hasCam || currentFood.id !== null);
 
     onMount(() => {
         interact.startRandomEventLoop();
@@ -89,9 +109,9 @@
     <GameInfo />
 
     <ButtonList position="top-right">
-        <button type="button" class="button">
-            <img src={assets.uiAssets.settings.src} alt="設定" draggable="false">
-            <span class="label">設定</span>
+        <button type="button" class="button" onclick={() => openDialog(Settings)}>
+            <img src={assets.uiAssets.settings.src} alt="選單" draggable="false">
+            <span class="label">選單</span>
         </button>
     </ButtonList>
 
@@ -107,29 +127,30 @@
         </button>
     </ButtonList>
 
-    <ButtonListWithShortcut position="bottom-right">
+    <ButtonListWithShortcut position="bottom-right" {activateShortcuts}>
         {#snippet shortcuts()}
-            <button type="button" class="button shortcut-button" onclick={() => foodCount > 0 && game.shortcutFeedPet()}>
-                <img src={assets.uiAssets.feed.src} alt="餵食" draggable="false">
-                <span class="label">餵食 {foodCount}</span>
+            {#if currentFood.id}
+            <button type="button" class="button shortcut-button" onclick={() => currentFood.count > 0 && game.shortcutFeedPet()}>
+                <img src={assets.itemIcons[currentFood.id].src} alt="餵食" draggable="false">
+                <span class="label">餵食 {currentFood.count}</span>
             </button>
+            {/if}
             {#if hasBall}
-                <button type="button" class="button shortcut-button" onclick={() => goto("./throwing-ball")}>
+                <button type="button" class="button shortcut-button" onclick={() => gotoThrowingBall()}>
                     <img src={assets.uiAssets.ball.src} alt="丟球" draggable="false">
                     <span class="label">丟球</span>
                 </button>
             {/if}
             {#if hasCam}
-                <button type="button" class="button shortcut-button" onclick={() => goto("./hide-and-seek")}>
+                <button type="button" class="button shortcut-button" onclick={() => gotoHideAndSeek()}>
                     <img src={assets.uiAssets.camera.src} alt="捉迷藏" draggable="false">
                     <span class="label">捉迷藏</span>
                 </button>
             {/if}
         {/snippet}
 
-        {#snippet children(onlongpress)}
-            <!-- onlongpress 是切換快捷顯示的函數 -->
-            <button type="button" class="button" use:longpress={{ onclick: () => goto("./backpack"), onlongpress }}>
+        {#snippet children(toggleShortcuts)}
+            <button type="button" class="button" use:longpress={{ onclick: () => goto("./backpack"), onlongpress: toggleShortcuts }}>
                 <img src={assets.uiAssets.inventory.src} alt="背包" draggable="false">
                 <span class="label">背包</span>
             </button>

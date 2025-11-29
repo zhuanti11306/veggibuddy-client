@@ -1,6 +1,8 @@
 import { ItemId } from "$lib/config";
 import { game } from "$lib/services";
 import { goto } from "$lib/utils/history";
+import { gotoHideAndSeek } from "$routes/game-hide-and-seek";
+import { gotoThrowingBall } from "$routes/game-throwing-ball";
 
 export { default } from "./page.svelte";
 
@@ -22,10 +24,10 @@ export const itemFunctions: Partial<Record<ItemId, { name: string; use: () => vo
     ],
 
     [ItemId.veggieCam]: [
-        { name: "躲貓貓", use: () => goto("/game/hide-and-seek"), close: true }
+        { name: "躲貓貓", use: () => gotoHideAndSeek(), close: true }
     ],
 
     [ItemId.ball]: [
-        { name: "丟球時間", use: () => goto("/game/throwing-ball"), close: true }
+        { name: "丟球時間", use: () => gotoThrowingBall(), close: true }
     ]
 };

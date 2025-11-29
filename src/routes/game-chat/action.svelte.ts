@@ -6,7 +6,7 @@ import { convert } from "$lib/utils/ffmpeg/webm-to-mp3";
 import { WaveformDrawer } from "$lib/utils/waveform";
 import { addAnimationLoop, clearAnimationLoop } from "$lib/utils/animation";
 
-import { CommunicationManager, interact, type PetFaceCategory, type ConversationService } from "$lib/services";
+import { CommunicationManager, game, interact, type PetFaceCategory, type ConversationService } from "$lib/services";
 
 import { resetConrols } from "$routes/game";
 
@@ -249,10 +249,6 @@ function stopRecording(send: boolean = true) {
 
         const { emotion, played: promisePlayed } = await conversation?.sendAudioAndWait(mp3Blob);
 
-        // switch (emotion) {
-        //     case ""
-        // }
-
         interact.setFace(emotion as PetFaceCategory);
 
         if (recorder.mode === FeedbackMode.Voice) {
@@ -262,6 +258,8 @@ function stopRecording(send: boolean = true) {
             for (let i = 0; i < iter; i++)
                 await interact.makeSound(undefined, 0);
         }
+
+        game.earnCurrency("CHAT");
 
         recorder.instance = null;
         recorder.state = RecordingState.Ready;

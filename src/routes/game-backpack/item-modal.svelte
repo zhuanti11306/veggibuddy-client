@@ -51,7 +51,6 @@
 
         width: 8rem;
         height: 8rem;
-        padding: 1rem;
         border-radius: .5rem;
 
         display: block;
@@ -131,6 +130,7 @@
         border-radius: .25rem;
         background-color: #73a2e8;
         margin: .25rem .5rem;
+        cursor: pointer;
     }
 
     .loading {

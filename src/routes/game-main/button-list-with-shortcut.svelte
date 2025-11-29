@@ -8,10 +8,11 @@
         children?: Snippet<[toggle: () => void]>;
         shortcuts?: Snippet<[toggle: () => void]>;
         showShortcuts?: boolean;
+        activateShortcuts?: boolean;
         position: "top-right" | "bottom-right" | "bottom-left";
     } 
 
-    let {position, children, shortcuts, showShortcuts = $bindable(false)}: $$Props = $props();
+    let {position, children, shortcuts, showShortcuts = $bindable(false), activateShortcuts = true}: $$Props = $props();
 
     function toggleShortcuts() {
         showShortcuts = !showShortcuts;
@@ -32,7 +33,7 @@
 </style>
 
 <ButtonList {position}>
-    {#if shortcuts && showShortcuts}
+    {#if shortcuts && showShortcuts && activateShortcuts}
         <div class="shortcut-list" transition:slide={{ duration: 250, axis: "y" }}>
             {@render shortcuts(toggleShortcuts)}
         </div>

@@ -3,43 +3,13 @@
     import { assets, game } from "$lib/services";
     import ItemModal from "./item-modal.svelte";
 
-    // import type { UserItem } from "$lib/apis";
-    // import { closeDialog, closeDialogByComponent, openDialog } from "$lib/components/dialog";
-    // import { game } from "$lib/game";
-    // import { uiAssets, itemIcons } from "$lib/services/icon.service";
-    // import { userItems, isGameLoading } from "$lib/stores";
-    // import { formatQuantity } from "$lib/utils";
-    // import { safeExecute } from "$lib/utils/error";
-    // import { logger } from "$lib/utils/logger";
-    // import ItemModal from "./item-modal.svelte";
-
-    // // 使用 store 中的用戶物品
-    // const items = $derived($userItems);
-    // const loading = $derived($isGameLoading);
-
-    // let error: string | null = $state(null);
-
-    // // 載入用戶物品
-    // async function loadUserItems() {
-    //     const result = await safeExecute(async () => {
-    //         await game.getUserItems();
-    //     });
-        
-    //     if (!result.success) {
-    //         error = result.error.message;
-    //         logger.error('InventoryPage', '載入用戶物品失敗', result.error);
-    //     }
-    // }
-
-    // // 初始載入
-    // loadUserItems();
-
     const userItems = game.getUserItems();
 </script>
 
 <style>
     h1 {
         margin: 0;
+        font-size: 1.5rem;
     }
 
     .label {

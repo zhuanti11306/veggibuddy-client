@@ -5,11 +5,11 @@ import { SAOPass } from 'three/addons/postprocessing/SAOPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { MapControls, OrbitControls, UnrealBloomPass } from "three/examples/jsm/Addons.js";
 
-import { GAME_CONFIG, SceneId } from "$lib/config";
 import { temperatureColor } from "$lib/utils/three/light";
-
-import { assets } from "..";
 import { GyroFineTuner } from "$lib/utils/three/gyro-fine-tuner";
+
+import { GAME_CONFIG, SceneId } from "$lib/config";
+import { assets } from "$lib/services";
 
 export interface SceneCreateInfo {
     lights?(): THREE.Light[];
@@ -39,25 +39,31 @@ export const sceneInfoMap = <const>{
             const lights: THREE.Light[] = [];
             const ambient = new THREE.AmbientLight(0xffffff, 1);
             lights.push(ambient);
-            const sun = new THREE.DirectionalLight(temperatureColor(4000), 10);
+            
+            const sun = new THREE.DirectionalLight(temperatureColor(3000), 10);
             lights.push(sun);
 
             sun.target.position.set(0, 0, 0);
-            sun.position.set(-2, 0.4, -1.4);
+            sun.position.set(-0.6240303246453015, 0.18594304681632223, -0.7589543709462294).setLength(2.5);
 
             sun.castShadow = true;
+
             sun.shadow.mapSize.width = 2048;
             sun.shadow.mapSize.height = 2048;
+            
+            sun.shadow.normalBias = 2 ** -6;
+            sun.shadow.bias = -(2 ** -8);
+            
             sun.shadow.camera.near = 0.0625;
-            sun.shadow.camera.far = 12;
-            sun.shadow.bias = -0.005;
+            sun.shadow.camera.far = 6;
+
             return lights;
         },
 
         camera() {
             const camera = new THREE.PerspectiveCamera(GAME_CONFIG.THREE.FIELD_OF_VIEW, 1, GAME_CONFIG.THREE.NEAR_CLIPPING_PLANE, GAME_CONFIG.THREE.FAR_CLIPPING_PLANE);
-            camera.lookAt(0, 0.08, 0);
-            camera.position.set(0, 0.14, 0.3);
+            camera.lookAt(0, 0.125, 0);
+            camera.position.set(0, 0.185, 0.3);
 
             return camera;
         },
@@ -139,7 +145,7 @@ export const sceneInfoMap = <const>{
                 // 設置環境貼圖
                 const environment = sceneAssets.environment;
                 if (environment?.envMap) {
-                    const yRotation = Math.PI;
+                    const yRotation = Math.PI * 5 / 6;
 
                     scene.environment = environment.envMap;
                     scene.environmentRotation.y = yRotation;
@@ -165,18 +171,20 @@ export const sceneInfoMap = <const>{
             const sun = new THREE.DirectionalLight(temperatureColor(4000), 4);
 
             sun.target.position.set(0, 0, 0);
-
-            const vx = -0.4907872227;
-            const vy = 0.7157308253;
-            const vz = -0.4968473486;
-            sun.position.set(vx, vy, vz);
+            sun.position.set(-0.5958726680193351, 0.6671024520583918, -0.44711337270090057).setLength(4);
 
             sun.castShadow = true;
-            sun.shadow.mapSize.width = 2048;
-            sun.shadow.mapSize.height = 2048;
+
+            sun.shadow.mapSize.width = 1024;
+            sun.shadow.mapSize.height = 1024;
+
             sun.shadow.camera.near = 0.0625;
             sun.shadow.camera.far = 12;
-            sun.shadow.bias = -0.00075;
+
+            sun.shadow.intensity = 1;
+            
+            sun.shadow.bias = -(2 ** -9);
+            // sun.shadow.normalBias = 0.002;
 
             return [sun];
         },
@@ -196,7 +204,7 @@ export const sceneInfoMap = <const>{
             aoPass.params.saoBias = 0.5;
             aoPass.params.saoIntensity = 0.002;
             aoPass.params.saoScale = 2;
-            aoPass.params.saoKernelRadius = 16;
+            aoPass.params.saoKernelRadius = 8;
             aoPass.params.saoMinResolution = 0;
             aoPass.params.saoBlur = true;
             aoPass.params.saoBlurRadius = 8;
@@ -260,7 +268,6 @@ export const sceneInfoMap = <const>{
             orbit.minPolarAngle = Math.PI * 3 / 7;
             orbit.maxPolarAngle = Math.PI * 3 / 5;
 
-            // orbit.minDistance = 0.25;
             orbit.maxDistance = 1 / 2 ** 12;
 
             orbit.enablePan = false;
@@ -279,7 +286,7 @@ export const sceneInfoMap = <const>{
         lights() {
             const lights: THREE.Light[] = [];
 
-            const ambient = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 3);
+            const ambient = new THREE.AmbientLight(0xffffff, 3);
             lights.push(ambient);
 
             ambient.position.set(0.5, 1, 0.25);

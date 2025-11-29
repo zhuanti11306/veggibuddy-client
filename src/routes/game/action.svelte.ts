@@ -270,12 +270,17 @@ export function registerPetSetup() {
             const scene = sceneInitResult?.scene;
             if (!scene) return;
 
-            if (petAsset.model.object) {
-                petAsset.model.object.position.set(0, 0, 0);
-                petAsset.model.object.lookAt(0, 0, 1);
-                scene.add(petAsset.model.object);
+            const petModelObject = petAsset.model.object;
+            if (petModelObject) {
+                petModelObject.position.set(0, 0, 0);
+                petModelObject.lookAt(0, 0, 1);
+                petModelObject.visible = true;
+
+                scene.add(petModelObject);
             };
-            if (lastPet?.model.object) scene.remove(lastPet.model.object);
+
+            if (lastPet?.model.object && lastPet !== petAsset)
+                scene.remove(lastPet.model.object);
 
             lastPet = petAsset;
         });

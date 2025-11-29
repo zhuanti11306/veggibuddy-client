@@ -1,0 +1,22 @@
+{
+    "$schema": "https://json.schemastore.org/web-manifest",
+
+    "short_name": "菜菜小伙伴",
+    "lang": "zh-tw",
+
+    "start_url": "/",
+
+    "orientation": "portrait-primary",
+    "display": "standalone",
+
+    "background_color": "black",
+    "theme_color": "black",
+
+    "icons": [
+        {
+            "sizes": "any",
+            "src": "/app.svg",
+            "type": "image/svg+xml"
+        }
+    ]
+}

@@ -56,7 +56,6 @@
 
         width: 8rem;
         height: 8rem;
-        padding: 1rem;
         border-radius: .5rem;
 
         display: block;

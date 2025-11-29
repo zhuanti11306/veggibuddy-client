@@ -34,6 +34,7 @@
         align-items: center;
 
         background-color: rgba(0, 0, 0, 0.125);
+        backdrop-filter: blur(4px);
 
         z-index: 1000;
     }

@@ -11,3 +11,5 @@ export * as interact from "./interact";
 export type * from "./interact";
 
 export * from "./communication";
+
+export { default as settings } from "./settings.svelte";

@@ -11,20 +11,23 @@ import backpackIcon from "$assets/image/ui/backpack.png";
 import shopIcon from "$assets/image/ui/shop.png";
 import settingsIcon from "$assets/image/ui/settings.png";
 import chatIcon from "$assets/image/ui/chat.png";
-import backIcon from "$assets/image/ui/返回.png";
 
-import handIcon from "$assets/image/ui/hand.png";
+import backIcon from "$assets/image/ui/back.png";
+import backToGameIcon from "$assets/image/ui/back-to-game.png";
+import resetIcon from "$assets/image/ui/reset.png";
+import moveIcon from "$assets/image/ui/move.png";
 
-import petBackground from "$assets/image/ui/背景.jpg"
-import titleImage from "$assets/image/ui/標題.png";
+import titleImage from "$assets/image/ui/title.png";
 import mainScreenElement from "$assets/image/ui/main-screen.png";
 import googleIcon from "$assets/image/ui/google.svg";
 
+import handIcon from "$assets/image/ui/hand.png";
+
 // 場景模型
-import roomModel from "$assets/model/room.glb?url";
-import throwingBallFloorModel from "$assets/model/floor.glb?url";
-import sky01EXR from "$assets/model/sky01.exr?url";
-import sky02HDR from "$assets/model/sky02.hdr?url";
+import roomModel from "$assets/model/scene/room.glb?url";
+import throwingBallFloorModel from "$assets/model/scene/floor.glb?url";
+import sky01HDR from "$assets/model/scene/sky01.hdr?url";
+import sky02HDR from "$assets/model/scene/sky02.hdr?url";
 
 // 角色資源
 import { carrot } from "./pet-carrot";
@@ -45,6 +48,7 @@ import { Environment } from "$lib/utils/three/environment";
 
 // 常數
 import { ItemId, PetId, SceneId } from "$lib/config";
+import { settings } from "..";
 
 export interface ImageAsset {
     src: string;
@@ -98,6 +102,9 @@ function createSoundAsset(url: string): SoundAsset {
         },
 
         async playSound() {
+            if (settings.sound === false)
+                return;
+
             const audio = this.getAudio();
             audio.currentTime = 0;
             
@@ -218,10 +225,12 @@ export const uiAssets = <const>{
     settings: createImageAsset(settingsIcon),
     chat: createImageAsset(chatIcon),
     back: createImageAsset(backIcon),
-    petBackground: createImageAsset(petBackground),
+    backToGame: createImageAsset(backToGameIcon),
     hand: createImageAsset(handIcon),
     ball: createImageAsset(ballIcon),
-    camera: createImageAsset(veggieCamIcon)
+    camera: createImageAsset(veggieCamIcon),
+    reset: createImageAsset(resetIcon),
+    move: createImageAsset(moveIcon)
 };
 
 export const sceneAssets = {
@@ -232,7 +241,7 @@ export const sceneAssets = {
                 .applyShadown(true)
         },
 
-        environment: new Environment(sky01EXR, "exr")
+        environment: new Environment(sky01HDR, "hdr")
     },
 
     [SceneId.throwingBallGame]: <SceneAsset<["field"]>>{

@@ -19,7 +19,7 @@
 
     let route = $state(getCurrentRoute());
 
-    const {currentRoute, params, query} = $derived.by(() => {
+    let match = $derived.by(() => {
         const { path, query } = route;
 
         let candidate = null as null | {
@@ -44,13 +44,18 @@
 
         return { ...candidate, path, query };
     });
+
+    let currentRoute = $derived(match.currentRoute);
+    let params = $derived(match.params);
+    let query = $derived(match.query);
+
+    let componentPromise = $derived(currentRoute ? Promise.all([currentRoute.getComponent(), currentRoute.getProps?.()]) : null);
 </script>
 
 <svelte:window on:hashchange={() => route = getCurrentRoute()} />
 
-{#if currentRoute}
-    <!-- {#await Promise.all([currentRoute.getComponent(), currentRoute.getProps?.(), preload === "all" && routes.forEach(r => r.getComponent())])} -->
-    {#await Promise.all([currentRoute.getComponent(), currentRoute.getProps?.()])}
+{#if currentRoute && componentPromise}
+    {#await componentPromise}
         {#if load}
             {@const LoadComponent = load}
             <LoadComponent />

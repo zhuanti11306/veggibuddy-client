@@ -6,13 +6,15 @@ import { SceneId } from "$lib/config";
 import { assets, game, model, type PetAsset, type SceneInitResult } from "$lib/services";
 import { clearAnimationLoop, addAnimationLoop } from "$lib/utils/animation";
 import { Api, api } from "$lib/apis";
+import { openDialog } from "$lib/core/dialogs";
+import Message from "./message.svelte";
 
 type HideNSeekSceneInitResult = SceneInitResult<any, any>;
 
 let sceneInitResult: HideNSeekSceneInitResult | null = null;
 const { promise: sceneModelPromise, resolve: resolveSceneModel } = Promise.withResolvers<HideNSeekSceneInitResult>();
 
-const SCENE_PANEL_WIDTH = 3; 
+const SCENE_PANEL_WIDTH = 1;
 const CAMERA_Y = 1;
 
 // 寵物載入
@@ -32,16 +34,22 @@ export function registerPetSetup() {
             assets.loadCharacterAssets(petId),
             sceneModelPromise
         ]).then(([petAsset, { scene }]) => {
-            if (petAsset.model.object) {
-                scene.add(petAsset.model.object);
-                petAsset.model.object.position.set(0, 0, 0);
-                petAsset.model.object.rotateZ(-Math.PI / 2);
-                petAsset.model.object.rotateY(Math.PI);
 
-                resolvePet(petAsset.model.object);
+            const petModelObject = petAsset.model.object;
+
+            if (petModelObject) {
+                scene.add(petModelObject);
+
+                petModelObject.position.set(-0.2, 0.4, 0);
+                petModelObject.rotation.set(0, 0, 0);
+
+                petModelObject.rotateY(-Math.PI / 2);
+                petModelObject.rotateX(-Math.PI / 2);
+
+                resolvePet(petModelObject);
             }
 
-            if (currentPet?.model.object) {
+            if (currentPet?.model.object && currentPet !== petAsset) {
                 scene.remove(currentPet.model.object);
             }
 
@@ -66,14 +74,12 @@ export async function capture() {
 
     const { width, height } = videoCanvasObject.canvas;
     const { scene, camera } = sceneInitResult;
-    
+
     // 1. 取得影像並建立地板
     const imageData = videoCanvasObject.context.getImageData(0, 0, width, height);
     const screenMesh = createScreenMesh(imageData, camera as PerspectiveCamera);
     scene.add(screenMesh);
     meshes.push(screenMesh);
-
-    const screenMeshY = screenMesh.position.y;
 
     // 2. 轉成 Blob 準備上傳
     const { canvas } = videoCanvasObject;
@@ -89,54 +95,48 @@ export async function capture() {
             // 3. 呼叫後端偵測 API
             // 請替換成你實際的 API Endpoint
             const result = await api(Api.imageObjectDetection, { file: blob });
-            
-            if (result.hidingPoint && currentPet?.model.object) {
-                console.log("偵測成功，隱藏點:", result.hidingPoint);
 
+            if (result.hidingPoint && currentPet?.model.object) {
                 // 4. 設定遮罩
                 const maskMesh = addMaskToScene(result.mask, screenMesh, imageData, camera as PerspectiveCamera);
                 scene.add(maskMesh);
                 meshes.push(maskMesh);
 
-                const maskMeshY = maskMesh.position.y;
-
                 // 5. 設定角色位置
                 // const { x, y } = result.hidingPoint;
                 // // 傳入原始影像尺寸以正確計算比例
                 // const worldPos = mapPixelToWorld(x, y, width, height);
-                
+
                 // // 更新角色位置
                 // const petY = maskMeshY;
                 // const petX = worldPos.x * (1 - maskMeshY);
                 // const petZ = worldPos.z * (1 - maskMeshY);
-                
+
                 // currentPet.model.object.position.set(petX, petY, petZ);
                 // currentPet.model.object.visible = true;
 
                 const { x, y } = result.hidingPoint;
-        
+
                 // 使用地板的寬高來計算水平位置 (因為 mapPixelToWorld 是基於全景的)
                 // 注意：這裡還是要傳入地板的原始寬高，不能傳 Mask 的寬高
                 const worldPos = mapPixelToWorld(screenMesh, x, y, canvas.width, canvas.height); // 需修改 mapPixelToWorld 內部使用 screenMesh 的原始尺寸
-                
+
                 const petY = screenMesh.position.y; // 寵物站在地板上
-                
+
                 // 如果你的寵物中心點在腳底，這樣設是對的。
                 // 如果寵物中心點在肚子，可能要設 petY + petHeight/2
-                
+
                 currentPet.model.object.position.set(worldPos.x, petY, worldPos.z);
                 currentPet.model.object.renderOrder = 1; // 畫在地板後、Mask 前
-                
+
                 // 讓角色面向鏡頭 (Optional, 視需求)
                 currentPet.model.object.lookAt(camera.position);
 
                 // 6. 開始遊戲互動
                 enableInteraction();
 
-            } else {
-                console.log("未偵測到合適的隱藏點，請重試");
-                alert("這裡好像沒有地方可以躲，換個地方拍拍看吧！");
-                // 這裡可以做 reset 邏輯
+            } else {          
+                openDialog(Message, { props: { message: "這裡好像沒有地方可以躲，換個地方拍拍看吧！", style: <const> "failure" } });
 
                 scene.remove(...meshes);
                 meshes.length = 0;
@@ -145,7 +145,7 @@ export async function capture() {
 
         } catch (error) {
             console.error("偵測發生錯誤:", error);
-            alert("連線錯誤，請稍後再試");
+            openDialog(Message, { props: { message: "連線錯誤，請稍後再試", style: <const> "failure" } });
         }
 
     }, "image/jpeg");
@@ -154,7 +154,8 @@ export async function capture() {
 let screenDimensions = { width: 1, height: 1 };
 let screenMesh: Mesh | null = null;
 let maskMesh: Mesh | null = null;
-let interactionCleanup: (() => void) | null = null; // 用於移除事件監聽
+// const interactionCleanup: (() => void) | null = $state(null); // 用於移除事件監聽
+export const cleanupFunction = $state<{ call?: () => void }>({});
 
 function createScreenMesh(imageData: ImageData, camera: PerspectiveCamera) {
 
@@ -191,9 +192,9 @@ function createScreenMesh(imageData: ImageData, camera: PerspectiveCamera) {
     const screenY = CAMERA_Y - distanceToCamera;
     screen.position.y = screenY;
 
-    screen.userData = { 
-        width: panelWidth, 
-        height: panelHeight, 
+    screen.userData = {
+        width: panelWidth,
+        height: panelHeight,
         distanceToCamera: distanceToCamera,
         y: screenY
     };
@@ -213,9 +214,9 @@ function createScreenMesh(imageData: ImageData, camera: PerspectiveCamera) {
     // const fovRad = (camera.fov * Math.PI) / 180;
     // const halfHeight = panelHeight / 2;
     // const distance = halfHeight / Math.tan(fovRad / 2);
-    
+
     // screen.position.y = (1 - distance);
-    
+
     // console.log("[DBG] Screen position y:", screen.position.y);
 
     // screen.renderOrder = 1;
@@ -224,8 +225,6 @@ function createScreenMesh(imageData: ImageData, camera: PerspectiveCamera) {
 
     screen.renderOrder = 0;
     screenMesh = screen;
-    return screen;
-
     return screen;
 }
 
@@ -245,16 +244,16 @@ function mapPixelToWorld(screenMesh: Mesh, x: number, y: number, imgW: number, i
     // return new Vector3(worldX, 0.005, worldZ); 
 
     // 這裡必須用 Screen (背景) 的尺寸，因為 hidingPoint 是基於整張圖的座標
-    const targetWidth = screenMesh.userData.width; 
+    const targetWidth = screenMesh.userData.width;
     const targetHeight = screenMesh.userData.height;
 
     const u = (x / imgW) - 0.5;
-    const v = (y / imgH) - 0.5; 
+    const v = (y / imgH) - 0.5;
 
     const worldX = u * targetWidth;
-    const worldZ = v * targetHeight; 
+    const worldZ = v * targetHeight;
 
-    return new Vector3(worldX, 0, worldZ); 
+    return new Vector3(worldX, 0, worldZ);
 }
 
 function addMaskToScene(maskBase64: string, screenMesh: Mesh, imageData: ImageData, camera: PerspectiveCamera) {
@@ -268,51 +267,22 @@ function addMaskToScene(maskBase64: string, screenMesh: Mesh, imageData: ImageDa
     // 載入 Mask 圖片
     const loader = new TextureLoader();
     const alphaMap = loader.load(`data:image/png;base64,${maskBase64}`);
-    console.log(`[DBG] data:image/png;base64,${maskBase64}`);
-    
+    // console.log(`[DBG] data:image/png;base64,${maskBase64}`);
+
     // 使用與地板相同的 Texture，但加上 Alpha Map
     // 這樣看起來就像是把物體「摳」出來放在上層
     const originalTexture = (screenMesh.material as MeshBasicMaterial).map;
 
-    // const panelWidth = maskPanelWidth;
-    // const panelHeight = imageData.height / imageData.width * panelWidth;
-
-    // const geometry = new PlaneGeometry(panelWidth, panelHeight);
-    // geometry.rotateX(-Math.PI / 2);
-
-    // const material = new MeshBasicMaterial({
-    //     map: originalTexture,
-    //     alphaMap: alphaMap,
-    //     transparent: true,
-    //     opacity: 1,
-    //     alphaTest: 0.1, // 重要：裁切掉透明度過低的部分
-    // });
-
-    // maskMesh = new Mesh(geometry, material);
-
-    // maskMesh.position.x = 0;
-    // maskMesh.position.z = 0;
-
-    // const fovRad = (camera.fov * Math.PI) / 180;
-    // const halfHeight = panelHeight / 2;
-    // const distance = halfHeight / Math.tan(fovRad / 2);
-
-    // maskMesh.position.y = 1 - distance;
-    // maskMesh.renderOrder = 2; // 確保在最後繪製 (處理透明度問題)
-
-    // console.log("[DBG] Mask position y:", maskMesh.position.y);
-    // return maskMesh;
-
     // 取得地板的資訊
     const screenInfo = screenMesh.userData;
-    
+
     // 設定預留給寵物的空間高度 (例如 0.5 單位)
     // 這決定了 Mask 會浮在地板上方多少距離
-    const petClearanceHeight = 0.5; 
-    
+    const petClearanceHeight = 0.5;
+
     // Mask 的新位置 (地板高度 + 寵物空間)
     const maskY = screenInfo.y + petClearanceHeight;
-    
+
     // 計算縮放比例 (Thales theorem / 相似三角形)
     // 新距離 / 舊距離
     const newDistanceToCamera = screenInfo.distanceToCamera - petClearanceHeight;
@@ -338,8 +308,8 @@ function addMaskToScene(maskBase64: string, screenMesh: Mesh, imageData: ImageDa
 
     maskMesh.renderOrder = 2; // 確保畫在最上層
 
-    console.log(`[DBG] ScreenY: ${screenInfo.y}, MaskY: ${maskY}, Ratio: ${scaleRatio}`);
-    
+    // console.log(`[DBG] ScreenY: ${screenInfo.y}, MaskY: ${maskY}, Ratio: ${scaleRatio}`);
+
     return maskMesh;
 }
 
@@ -408,11 +378,9 @@ function getUserMedia(videoElement: HTMLVideoElement, canvasElement?: HTMLCanvas
 
 
         context.save();
-        context.translate(width / 2, height / 2);
-        context.rotate(Math.PI / 2);
         context.scale(scale, scale);
 
-        context.drawImage(videoElement, -videoWidth / 2, -videoHeight / 2, videoWidth, videoHeight);
+        context.drawImage(videoElement, 0, 0, videoWidth, videoHeight);
         context.restore();
     }
 
@@ -434,7 +402,7 @@ function getUserMedia(videoElement: HTMLVideoElement, canvasElement?: HTMLCanvas
 
 function enableInteraction() {
     // 先清理舊的監聽器
-    if (interactionCleanup) interactionCleanup();
+    cleanupFunction.call?.();
 
     const pointer = new Vector2();
     const container = sceneInitResult!.controls.domElement; // 通常是 canvas 或其容器
@@ -453,39 +421,51 @@ function enableInteraction() {
         // recursive = true 表示連同角色的子物件一起檢測
         const intersects = model.raycaster.intersectObject(currentPet.model.object, true);
         if (intersects.length > 0) {
-            console.log("Found it! Hit:", intersects[0]);
-            
             // 觸發找到後的邏輯
             onCharacterFound();
         }
     };
 
+    addAnimationLoop(hideAnimate);
     container.addEventListener('click', onClick);
 
-    interactionCleanup = () => {
+    cleanupFunction.call = () => {
+        if (currentPet?.model.object) {
+            currentPet.model.object.position.set(-0.2, 0.4, 0);
+            currentPet.model.object.rotation.set(0, 0, 0);
+
+            currentPet.model.object.rotateY(-Math.PI / 2);
+            currentPet.model.object.rotateX(-Math.PI / 2);
+        }
+
+        if (sceneInitResult) {
+            sceneInitResult.scene.remove(...meshes);
+            meshes.length = 0;
+        }
+
+        clearAnimationLoop(hideAnimate);
         container.removeEventListener('click', onClick);
+        
+        cleanupFunction.call = undefined;
     };
 }
 
 function onCharacterFound() {
-    // 這裡實作找到後的動畫
-    // 1. 讓角色跳起來或變大
-    // 2. 移除遮罩 maskMesh.visible = false
-    // 3. 彈出結算視窗
-    if (currentPet?.model.object) {
-        // 簡單範例：讓角色變大並跳出來
-        currentPet.model.object.position.y = 1.0; 
-        currentPet.model.object.scale.setScalar(currentPet.model.object.scale.x * 1.5);
-    }
-    if (maskMesh) {
-        // 選擇性：讓遮罩淡出或直接移除
-        maskMesh.visible = false; 
-    }
     
     // 清除點擊監聽
-    if (interactionCleanup) interactionCleanup();
-    alert("恭喜找到寵物！");
-    
+    cleanupFunction.call?.();
+    game.earnCurrency("CHAT"); // 沒有 HIDE_AND_SEEK，暫時用 CHAT 代替
+
+    openDialog(Message, { props: { message: "恭喜找到寵物！獲得金幣！", style: <const> "success" } });
+
     sceneInitResult!.scene.remove(...meshes);
     meshes.length = 0;
+}
+
+function hideAnimate(_: number, time: number) {
+    if (!currentPet?.model.object) return;
+    if (!sceneInitResult) return;
+
+    const petModel = currentPet.model.object;
+    petModel.rotation.z = (Math.sin(time / 1000) / 3 - 0.5) * Math.PI; // 旋轉
 }
