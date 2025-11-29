@@ -1,0 +1,38 @@
+:root {
+    font-family: sans-serif;
+    font-weight: 400;
+}
+
+html {
+    background-color: black;
+    height: 100dvh;
+}
+
+body {
+    display: flex;
+    place-items: center;
+    place-content: center;
+    
+    aspect-ratio: 4 / 7;
+    height: 100%;
+    margin: auto;
+
+    position: relative;
+
+    @media (aspect-ratio <= 4 / 5) {
+        aspect-ratio: unset;
+    }
+}
+
+*, ::before, ::after {
+    box-sizing: border-box;
+    user-select: none;
+}
+
+#app {
+    display: contents;
+}
+
+img {
+    -webkit-tap-highlight-color: transparent;
+}
