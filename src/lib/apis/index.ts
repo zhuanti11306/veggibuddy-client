@@ -1,7 +1,8 @@
 import { ENV, isDev, ItemId, PetId } from "$lib/config";
 import type { MarketItem, UserItem, UserPetInfo, UserCurrency, PetIntro } from "$lib/services";
+import { sleep } from "$lib/utils/async/sleep";
 
-import { auth, getCurrentUser } from "./auth";
+import { getCurrentUser } from "./auth";
 
 export interface LoginInfo {
     name: string;
@@ -234,7 +235,13 @@ export async function api<T extends Api>(name: T, params?: typeof apiInfo[T]["pa
         }
     }
     
-    const response = await fetch(url.toString(), fetchConfig);
+    let response = await fetch(url.toString(), fetchConfig);
+
+    // 可能是 token 尚未更新，嘗試重新取得一次
+    for (let tryCount = 0; tryCount < 5 && response.status === 401 && name === Api.userLogin; tryCount++) {
+        await sleep(3000); // 避免短時間內重複請求
+        response = await fetch(url.toString(), fetchConfig);
+    }
 
     if (!response.ok) {
         const errorMessage = `API ${name} failed: ${response.status} ${response.statusText}`;

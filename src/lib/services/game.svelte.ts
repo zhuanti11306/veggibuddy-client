@@ -316,9 +316,18 @@ async function handleFoodResponse(response: ApiResponse.FeedPet) {
     // 預載圖示
     await loadItemIcons(userItemIds);
 
+    // 清空食物數量
+    if (userItems[ItemId.generalFood])
+        userItems[ItemId.generalFood].quantity = 0; 
+
+    if (userItems[ItemId.premiumFood])
+        userItems[ItemId.premiumFood].quantity = 0;
+
+    // 更新食物數量
     for (const item of userItemList) {
         userItems[item.itemId] = item;
     }
+
     return userItemList;
 }
 

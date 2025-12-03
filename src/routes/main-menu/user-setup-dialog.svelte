@@ -24,6 +24,7 @@
 
             if (petIntroListData) {
                 for (const pet of petIntroListData) {
+                    if (pet.typeId == PetId.mushroom) continue; // 暫時不開放菇菇寵物
                     intro.set(pet.typeId, pet);
                 }   
             }

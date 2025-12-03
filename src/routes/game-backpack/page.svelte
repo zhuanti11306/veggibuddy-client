@@ -1,9 +1,14 @@
 <script lang="ts">
     import { openDialog } from "$lib/core/dialogs";
     import { assets, game } from "$lib/services";
+    import { onMount } from "svelte";
     import ItemModal from "./item-modal.svelte";
 
-    const userItems = game.getUserItems();
+    let loading: boolean = $state(true);
+
+    onMount(() => {
+        game.getUserItems().then(() => loading = false);
+    });
 </script>
 
 <style>
@@ -181,32 +186,32 @@
         </button>
     </header>
 
-    {#await userItems}
+    {#if loading}
         <div class="loading">載入中……</div>
-    {:then} 
+    {:else} 
         <div class="list-container">
             <div class="list">
                 {#each Object.values(game.userItems) as item}
-                    <button class="item" onclick={() => openDialog(ItemModal, { props: { item } })}>
-                    <!-- <button class="item" > -->
-                        <img 
-                            class="item-image" 
-                            src={assets.getItemIcon(item.itemId)?.src ?? ""} 
-                            onerror={e => e.preventDefault()} 
-                            alt={item.name}
-                        >
-                        <!-- <p class="label">&times;{formatQuantity(item.quantity)}</p> -->
-                        <p class="label">&times;{item.quantity}</p>
-                    </button>
+                    {#if item.quantity}
+                        <button class="item" onclick={() => openDialog(ItemModal, { props: { item } })}>
+                            <img 
+                                class="item-image" 
+                                src={assets.getItemIcon(item.itemId)?.src ?? ""} 
+                                onerror={e => e.preventDefault()} 
+                                alt={item.name}
+                            >
+                            <p class="label">&times;{item.quantity}</p>
+                        </button>
+                    {/if}
                 {/each}
-                {#each Array.from({ length: Math.max(0, 24 - (Object.keys(game.userItems).length ?? 0)) }) as slot}
+                {#each Array.from({ length: Math.max(0, 24 - Object.values(game.userItems).filter(item => item.quantity).length) })}
                     <div class="empty-item">
                         <div class="empty-item-img"></div>
                     </div>
                 {/each}
             </div>
         </div>
-    {/await}
+    {/if}
 
     <!-- {#if loading}
         <div class="loading">載入中……</div>

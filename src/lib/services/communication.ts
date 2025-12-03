@@ -203,7 +203,7 @@ export class ConversationService extends EventTarget {
     }
 
     // 發送音訊並等待回應
-    async sendAudioAndWait(blob: Blob) {
+    async sendAudioAndWait(blob: Blob, abortSignal?: AbortSignal) {
         await this.waitForReady();
 
         if (!this.sendAudio(blob)) {

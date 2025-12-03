@@ -296,6 +296,7 @@ export const action: Action<HTMLDivElement> = function (container) {
         throw new Error("Canvas element not found");
 
     const result = sceneInitResult = model.initScene(container, canvas, SceneId.defaultRoom);
+    console.log("[DBG] scene id:", result.scene.id);
 
     function onpointerup(_event: PointerEvent) {
         longPress.state = 0;

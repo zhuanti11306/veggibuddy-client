@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-// import basicSSL from "@vitejs/plugin-basic-ssl";
+import basicSSL from "@vitejs/plugin-basic-ssl";
 // import { visualizer } from "rollup-plugin-visualizer"; 
 
 // https://vite.dev/config/
@@ -9,7 +9,7 @@ export default defineConfig({
 
     plugins: [
         svelte(),
-        // basicSSL(),
+        basicSSL(),
         // visualizer()
     ],
 

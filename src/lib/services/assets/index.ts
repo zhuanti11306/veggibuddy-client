@@ -81,7 +81,7 @@ export interface SoundAsset {
     complete: boolean;
     load(): Promise<void>;
     getAudio(): HTMLAudioElement;
-    playSound(): Promise<void>;
+    playSound(force?: boolean): Promise<void>;
 }
 
 function createSoundAsset(url: string): SoundAsset {
@@ -101,8 +101,8 @@ function createSoundAsset(url: string): SoundAsset {
             return audio;
         },
 
-        async playSound() {
-            if (settings.sound === false)
+        async playSound(force?: boolean) {
+            if (settings.sound === false && !force)
                 return;
 
             const audio = this.getAudio();

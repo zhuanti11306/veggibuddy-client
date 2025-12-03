@@ -90,7 +90,7 @@
     <canvas id="video"></canvas>
     <canvas id="pet"></canvas>
 
-    <button type="button" class="button left" onclick={() => history.back()}>
+    <button type="button" class="button left" onclick={() => (cleanupFunction.call?.(), history.back())}>
         <img src={assets.uiAssets.backToGame.src} alt="返回" draggable="false">
         <span class="label">返回</span>
     </button>

@@ -43,9 +43,9 @@ export class GyroFineTuner {
      */
     public async enable(): Promise<void> {
         // 檢查是否有 requestPermission 方法 (iOS 13+)
-        if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+        if (typeof (window.DeviceOrientationEvent as any)?.requestPermission === 'function') {
             try {
-                const permission = await (DeviceOrientationEvent as any).requestPermission();
+                const permission = await (window.DeviceOrientationEvent as any).requestPermission();
                 if (permission === 'granted') {
                     this.start();
                 }

@@ -24,38 +24,41 @@ const sceneModel = assets.sceneAssets.throwingGame.models.field;
 
 // 寵物載入
 
+const originScale = 32 / 900; 
+
 const pet = $derived(game.petInfo.isLegal ? { id: game.petInfo.type, assets: assets.petAssets[game.petInfo.type] } : null);
 const { promise: petPromise, resolve: resolvePet } = Promise.withResolvers<PetAsset>();
 let lastPet: PetAsset | null = null;
-const originScale = 32 / 900; 
 
 export function registerPetSetup() {
     $effect(() => {
-        if (!pet)
-            return void game.getPetInfo();
+        if (!pet) return;
 
         const petId = pet.id;
+        const petAsset = pet.assets;
 
-        Promise.all([
-            assets.loadCharacterAssets(petId),
-            sceneModelPromise
-        ]).then(([petAsset, { scene }]) => {
+        assets.loadCharacterAssets(petId).then(() => {
+            const scene = sceneInitResult?.scene;
+            if (!scene) return;
+
             const petModelObject = petAsset.model.object;
-            
             if (petModelObject) {
-                scene.add(petModelObject);
                 petModelObject.position.set(0, 0, .5);
                 petModelObject.lookAt(new Vector3(0, 0, 0));
-            }
+                petModelObject.visible = true;
 
-            if (lastPet?.model.object && lastPet !== petAsset) {
+                scene.add(petModelObject);
+            };
+
+            if (lastPet?.model.object && lastPet !== petAsset)
                 scene.remove(lastPet.model.object);
-            }
 
-            resolvePet(lastPet = petAsset);
-        })
+            lastPet = petAsset;
+            resolvePet(petAsset);
+        });
     });
 }
+
 
 // 拖曳狀態
 
@@ -397,7 +400,8 @@ function getThrowingGameAnimation(petModelObject: Object3D, objects: ReturnType<
                             animationState.chasingBallState = ChasingBallState.Chasing;
                         } else {
                             const rand = Math.random();
-                            if (rand < 0.0025)
+                            // 0.25% 每幀（每秒約 15%）的機率開始追球，且沒有預測中的拋物線
+                            if (rand < 0.0025 && !animationState.predictParabolaCurve)
                                 animationState.allowKickBall = true;
                         }
 
