@@ -26,6 +26,13 @@
             if (close) closeDialog();
         }
     }
+
+    $effect(() => {
+        if (userOwned === 0) {
+            // 如果沒有物品，關閉視窗
+            closeDialog();
+        };
+    });
 </script>
 
 <style>

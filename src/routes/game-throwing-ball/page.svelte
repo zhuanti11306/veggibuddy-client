@@ -91,7 +91,7 @@
 <div class="container" use:action>
     <canvas></canvas>
 
-    <button type="button" class="button left" onclick={() => history.back()}>
+    <button type="button" class="button left" onclick={() => (resetThrowingBallGame(), history.back())}>
         <img src={assets.uiAssets.backToGame.src} alt="返回" draggable="false">
         <span class="label">返回</span>
     </button>

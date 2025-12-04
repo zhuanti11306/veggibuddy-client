@@ -36,13 +36,10 @@
         if (loading)
             return; // 防止重複點擊
 
-        let currentUser = getCurrentUser();
-
-        if (currentUser instanceof Promise ) {
-            loading = "正在檢查登入狀態...";
-            currentUser = await getCurrentUser();
-            loading = undefined;
-        }
+        loading = "正在檢查登入狀態...";
+        let currentUser = await getCurrentUser();
+        
+        loading = undefined;
 
         // 檢查使用者是否已登入，若未登入則打開登入對話框
         if (currentUser === null) {

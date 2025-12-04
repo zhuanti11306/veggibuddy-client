@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { signInWithEmailAndPassword, signInWithGoogle } from "$lib/apis/auth";
+    import { createAccountWithEmailAndPassword, FirebaseError, signInWithEmailAndPassword, signInWithGoogle } from "$lib/apis/auth";
     import { assets } from "$lib/services";
     import type { DialogProps } from "$lib/core/dialogs";
 
@@ -7,11 +7,22 @@
 
     let stage1 = $state<HTMLFormElement | null>(null);
     let stage2 = $state<HTMLFormElement | null>(null);
+    let stage3 = $state<HTMLDivElement | null>(null);
         
     let stage2Loading = $state<string | undefined>(undefined);
     let stage2Error = $state<string | undefined>(undefined);
 
+    let stage3Loading = $state<string | undefined>(undefined);
+    let stage3Error = $state<string | undefined>(undefined);
+
     let loginData = $state({ email: "", password: "" });
+
+    function blurAll(element: HTMLElement) {
+        element.blur();
+        const children = element.children;
+        if (children.length)
+            Array.from(children).forEach(child => child instanceof HTMLElement && blurAll(child));
+    }
 
     async function handleGoogleSignIn() {
         try {
@@ -31,6 +42,7 @@
 
         if (!email || !stage2) return;
 
+        blurAll(stage1);
         stage2.reset(); // 清除密碼欄位
         stage2.scrollIntoView({ behavior: "smooth" });
 
@@ -54,9 +66,46 @@
 
             closeDialog();
         } catch (error) {
-            stage2Error = "登入失敗，請檢查您的電子郵件和密碼是否正確。";
+            console.error("登入失敗：", error);
+
+            if (error instanceof FirebaseError) {
+                switch (error.code) {
+                    case "auth/user-not-found":
+                        // 帳號不存在，跳轉到建立帳號階段
+                        if (stage3)  {
+                            blurAll(stage2);
+                            stage3.scrollIntoView({ behavior: "smooth" });
+                        }
+                        break;
+
+                    // 其他錯誤處理
+                    case "auth/wrong-password":
+                        stage2Error = "登入失敗，請檢查您的電子郵件和密碼是否正確。";
+                        break;
+                    case "auth/invalid-email":
+                        stage2Error = "登入失敗，請檢查您的電子郵件格式是否正確。";
+                        break;
+                    case "auth/too-many-requests":
+                        stage2Error = "登入失敗，請稍後再試。";
+                        break;
+                }
+            }
         } finally {
             stage2Loading = undefined;
+        }
+    }
+
+    async function handleSubmitStage3(event: SubmitEvent) {
+        event.preventDefault();
+        try {
+            stage3Loading = "建立中……";
+            await createAccountWithEmailAndPassword(loginData.email, loginData.password);
+            closeDialog();
+        } catch (error) {
+            console.error("建立帳戶失敗：", error);
+            stage3Error = "建立帳戶失敗，請稍後再試。";
+        } finally {
+            stage3Loading = undefined;
         }
     }
 
@@ -66,6 +115,7 @@
                 dialog.close();
                 break;
             case 2:
+            case 3:
                 stage1?.scrollIntoView({ behavior: "smooth" });
                 break;
         }
@@ -215,10 +265,10 @@
                 <div class="spacer"></div>
                 <button type="submit" class="button primary">下一步</button>
                 <button type="button" class="button secondary" onclick={() => prevStage(1)}>取消</button>
-                <hr class="divider">
+                <!-- <hr class="divider">
                 <button type="button" class="button secondary" onclick={handleGoogleSignIn}>
                     <img src={assets.getMainScreenAsset("googleIcon").src} alt="Google Icon" /> 使用 Google 登入
-                </button>
+                </button> -->
             </form>
             <form bind:this={stage2} class="stage" onsubmit={handleSubmitStage2}>
                 <h1>帳戶密碼</h1>
@@ -232,6 +282,15 @@
                 <button type="submit" class="button primary">下一步</button>
                 <button type="button" class="button secondary" onclick={() => prevStage(2)}>上一步</button>
             </form>
+            <div bind:this={stage3} class="stage">
+                <h1>建立新帳戶</h1>
+                <p>此電子郵件尚未註冊帳戶，確定要建立新帳戶嗎？</p>
+                <div class="spacer"></div>
+                <p class="error-text">{stage3Error}</p>
+                <p class="loading-text">{stage3Loading}</p>
+                <button type="submit" class="button primary">建立帳戶</button>
+                <button type="button" class="button secondary" onclick={() => prevStage(3)}>上一步</button>
+            </div>
         </div>
     </div>
 </div>

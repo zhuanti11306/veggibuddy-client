@@ -12,7 +12,7 @@ import Message from "./message.svelte";
 type HideNSeekSceneInitResult = SceneInitResult<any, any>;
 
 let sceneInitResult: HideNSeekSceneInitResult | null = null;
-const { promise: sceneModelPromise, resolve: resolveSceneModel } = Promise.withResolvers<HideNSeekSceneInitResult>();
+// const { promise: sceneModelPromise, resolve: resolveSceneModel } = Promise.withResolvers<HideNSeekSceneInitResult>();
 
 const SCENE_PANEL_WIDTH = 1;
 const CAMERA_Y = 1;
@@ -20,23 +20,63 @@ const CAMERA_Y = 1;
 // 寵物載入
 
 const pet = $derived(game.petInfo.isLegal ? { id: game.petInfo.type, assets: assets.petAssets[game.petInfo.type] } : null);
-const { promise: petPromise, resolve: resolvePet } = Promise.withResolvers<Object3D>();
+// const { promise: petPromise, resolve: resolvePet } = Promise.withResolvers<Object3D>();
 let currentPet: PetAsset | null = null;
+
+// export function registerPetSetup() {
+//     $effect(() => {
+//         if (!pet)
+//             return void game.getPetInfo();
+
+//         const petId = pet.id;
+
+//         Promise.all([
+//             assets.loadCharacterAssets(petId),
+//             sceneModelPromise
+//         ]).then(([petAsset, { scene }]) => {
+
+//             console.log({
+//                 current: currentPet,
+//                 new: petAsset,
+//                 test: currentPet === petAsset
+//             });
+
+//             if (currentPet?.model.object) {
+//                 scene.remove(currentPet.model.object);
+//             }
+
+//             const petModelObject = petAsset.model.object;
+
+//             if (petModelObject) {
+//                 scene.add(petModelObject);
+
+//                 petModelObject.position.set(-0.2, 0.4, 0);
+//                 petModelObject.rotation.set(0, 0, 0);
+
+//                 petModelObject.rotateY(-Math.PI / 2);
+//                 petModelObject.rotateX(-Math.PI / 2);
+//                 petModelObject.visible = true;
+
+//                 // resolvePet(petModelObject);
+//             }
+
+//             currentPet = petAsset;
+//         })
+//     });
+// }
 
 export function registerPetSetup() {
     $effect(() => {
-        if (!pet)
-            return void game.getPetInfo();
+        if (!pet) return;
 
         const petId = pet.id;
+        const petAsset = pet.assets;
 
-        Promise.all([
-            assets.loadCharacterAssets(petId),
-            sceneModelPromise
-        ]).then(([petAsset, { scene }]) => {
+        assets.loadCharacterAssets(petId).then(() => {
+            const scene = sceneInitResult?.scene;
+            if (!scene) return;
 
             const petModelObject = petAsset.model.object;
-
             if (petModelObject) {
                 scene.add(petModelObject);
 
@@ -45,16 +85,14 @@ export function registerPetSetup() {
 
                 petModelObject.rotateY(-Math.PI / 2);
                 petModelObject.rotateX(-Math.PI / 2);
+                petModelObject.visible = true;
+            };
 
-                resolvePet(petModelObject);
-            }
-
-            if (currentPet?.model.object && currentPet !== petAsset) {
+            if (currentPet?.model.object && currentPet !== petAsset)
                 scene.remove(currentPet.model.object);
-            }
 
             currentPet = petAsset;
-        })
+        });
     });
 }
 
@@ -88,12 +126,8 @@ export async function capture() {
 
         // TODO: 這裡可以播放一個「分析中...」的 UI Loading 動畫
 
-        // const formData = new FormData();
-        // formData.append("file", blob, "frame.jpg");
-
         try {
             // 3. 呼叫後端偵測 API
-            // 請替換成你實際的 API Endpoint
             const result = await api(Api.imageObjectDetection, { file: blob });
 
             if (result.hidingPoint && currentPet?.model.object) {
@@ -103,18 +137,6 @@ export async function capture() {
                 meshes.push(maskMesh);
 
                 // 5. 設定角色位置
-                // const { x, y } = result.hidingPoint;
-                // // 傳入原始影像尺寸以正確計算比例
-                // const worldPos = mapPixelToWorld(x, y, width, height);
-
-                // // 更新角色位置
-                // const petY = maskMeshY;
-                // const petX = worldPos.x * (1 - maskMeshY);
-                // const petZ = worldPos.z * (1 - maskMeshY);
-
-                // currentPet.model.object.position.set(petX, petY, petZ);
-                // currentPet.model.object.visible = true;
-
                 const { x, y } = result.hidingPoint;
 
                 // 使用地板的寬高來計算水平位置 (因為 mapPixelToWorld 是基於全景的)
@@ -126,7 +148,7 @@ export async function capture() {
                 // 如果你的寵物中心點在腳底，這樣設是對的。
                 // 如果寵物中心點在肚子，可能要設 petY + petHeight/2
 
-                currentPet.model.object.position.set(worldPos.x, petY, worldPos.z);
+                currentPet.model.object.position.set(worldPos.x, petY + 0.1, worldPos.z);
                 currentPet.model.object.renderOrder = 1; // 畫在地板後、Mask 前
 
                 // 讓角色面向鏡頭 (Optional, 視需求)
@@ -199,49 +221,12 @@ function createScreenMesh(imageData: ImageData, camera: PerspectiveCamera) {
         y: screenY
     };
 
-    // const panelWidth = backgroundPanelWidth;
-    // const panelHeight = imageData.height / imageData.width * panelWidth;
-
-    // const geometry = new PlaneGeometry(panelWidth, panelHeight);
-    // geometry.rotateX(-Math.PI / 2);
-
-    // const material = new MeshBasicMaterial({ map: videoTexture });
-
-    // const screen = new Mesh(geometry, material);
-    // screen.position.x = 0;
-    // screen.position.z = 0;
-
-    // const fovRad = (camera.fov * Math.PI) / 180;
-    // const halfHeight = panelHeight / 2;
-    // const distance = halfHeight / Math.tan(fovRad / 2);
-
-    // screen.position.y = (1 - distance);
-
-    // console.log("[DBG] Screen position y:", screen.position.y);
-
-    // screen.renderOrder = 1;
-
-    // screenMesh = screen;
-
     screen.renderOrder = 0;
     screenMesh = screen;
     return screen;
 }
 
 function mapPixelToWorld(screenMesh: Mesh, x: number, y: number, imgW: number, imgH: number): Vector3 {
-    // // 1. 計算 UV 比例 (範圍 -0.5 ~ 0.5，因為 Plane 中心在 0,0)
-    // // 注意：YOLO 的 Y 通常是由上往下算，而 3D 的 Z (對應螢幕 Y) 也是由上往下 (視角決定)
-    // // 這裡假設 Texture 沒有被垂直翻轉
-    // const u = (x / imgW) - 0.5;
-    // const v = (y / imgH) - 0.5; 
-
-    // // 2. 映射到世界尺寸
-    // const worldX = u * screenDimensions.width;
-    // // 在 Top-Down 視角 (rotateX -90deg)，原本圖片的 Y 變成了 3D 的 Z 軸
-    // const worldZ = v * screenDimensions.height; 
-
-    // // y = 0.05 讓它稍微浮在地板上，避免 Z-fighting (閃爍)
-    // return new Vector3(worldX, 0.005, worldZ); 
 
     // 這裡必須用 Screen (背景) 的尺寸，因為 hidingPoint 是基於整張圖的座標
     const targetWidth = screenMesh.userData.width;
@@ -328,15 +313,17 @@ export const action: Action<HTMLElement> = function (container) {
     // 初始化場景
 
     const result = sceneInitResult = model.initScene(container, canvas, SceneId.hideNSeekGame);
-    resolveSceneModel(result);
+    // resolveSceneModel(result);
 
     let dispose: (() => void) | null = null;
 
     Promise.all([
-        petPromise,
+        pet?.assets.model.whenLoaded,
         getUserMedia(video, videoCanvas),
     ]).then(([petObject, disposeGetUserMedia]) => {
         dispose = () => {
+            const petObjectModel = petObject!.object!;
+            petObjectModel.removeFromParent();
             disposeGetUserMedia();
         };
     });
@@ -361,36 +348,70 @@ export const action: Action<HTMLElement> = function (container) {
 function getUserMedia(videoElement: HTMLVideoElement, canvasElement?: HTMLCanvasElement) {
     let stream: MediaStream | null = null;
 
+    // 1. 強制設定 Canvas 解析度為 1920x1080
+    const TARGET_WIDTH = 1920;
+    const TARGET_HEIGHT = 1080;
+
+    if (canvasElement) {
+        canvasElement.width = TARGET_WIDTH;
+        canvasElement.height = TARGET_HEIGHT;
+    }
+
     const context = canvasElement?.getContext("2d")!;
     if (!context) throw new Error("Cannot get 2D context from canvas.");
 
     function drawToCanvas() {
-
         if (videoElement.paused || videoElement.ended) return;
         if (videoElement.readyState < 2 || videoElement.videoWidth === 0) return;
 
+        // 確保 Canvas 尺寸（以防外部 CSS 改變了它，但通常由上面設定即可）
         const { width, height } = canvasElement!;
+        const { videoWidth, videoHeight } = videoElement;
 
-        if (!width || !height) return;
-
-        const { videoHeight, videoWidth } = videoElement;
+        // 2. 計算 Cover 模式的縮放比例與位置
+        // Math.max 確保畫面會填滿較長的一邊 (Cover 核心邏輯)
         const scale = Math.max(width / videoWidth, height / videoHeight);
 
+        // 計算縮放後的實際寬高
+        const scaledWidth = videoWidth * scale;
+        const scaledHeight = videoHeight * scale;
 
-        context.save();
-        context.scale(scale, scale);
+        // 計算置中需要的偏移量 (x, y)
+        // (畫布寬度 - 縮放後寬度) / 2 = 讓圖片水平置中
+        const x = (width - scaledWidth) / 2;
+        const y = (height - scaledHeight) / 2;
 
-        context.drawImage(videoElement, 0, 0, videoWidth, videoHeight);
-        context.restore();
+        // 清除舊畫面 (選用，因為 Cover 會蓋滿，但在某些透明背景下是好習慣)
+        context.clearRect(0, 0, width, height);
+
+        // 繪製
+        // 參數：來源, x座標, y座標, 繪製寬度, 繪製高度
+        context.drawImage(videoElement, x, y, scaledWidth, scaledHeight);
     }
 
+    // 假設 addAnimationLoop 已經定義在外部
     addAnimationLoop(drawToCanvas);
 
+    // 3. 請求相機提供 1080p 畫質 (ideal)
     navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: "environment" }, audio: false })
-        .then(streamObject => { videoElement.srcObject = stream = streamObject; videoElement.play() });
+        .getUserMedia({ 
+            video: { 
+                facingMode: "environment",
+                width: { ideal: 1920 },
+                height: { ideal: 1080 } 
+            }, 
+            audio: false 
+        })
+        .then(streamObject => { 
+            videoElement.srcObject = stream = streamObject; 
+            videoElement.play();
+        })
+        .catch(err => {
+            console.error("Camera access denied or not supported:", err);
+        });
 
     return () => {
+        // 假設 clearAnimationLoop 已經定義在外部
         clearAnimationLoop(drawToCanvas);
 
         if (stream) {

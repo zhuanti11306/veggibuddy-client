@@ -17,7 +17,7 @@ export const enum PetFaceCategory {
     disgusted = "Disgust"
 }
 
-export async function makeSound(category?: PetSoundCategory, bias: number = .125) {
+export async function makeSound(category?: PetSoundCategory, bias: number = .125, force: boolean = false) {
     
     if (!game.petInfo.isLegal)
         return;
@@ -30,7 +30,7 @@ export async function makeSound(category?: PetSoundCategory, bias: number = .125
     eventBias += bias;
 
     const targetSound = categorySounds[Math.floor(Math.random() * categorySounds.length)];
-    return targetSound.playSound();
+    return targetSound.playSound(force);
 }
 
 export async function setFace(category: PetFaceCategory) {

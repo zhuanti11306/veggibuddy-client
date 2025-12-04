@@ -1,18 +1,19 @@
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, type User } from "firebase/auth";
 
-import { isDev } from "$lib/config";
-
 import { app } from "./firebase";
 
 export const auth = getAuth(app);
 
-const userPromise = Object.assign(new Promise<void>(resolve => {
-    onAuthStateChanged(auth, user => {
-        if (userPromise.currentUser === undefined)
-            resolve();
-        userPromise.currentUser = user;
-    });
-}), { currentUser: undefined as User | undefined | null });
+const userState = {
+    whenReady: auth.authStateReady(),
+    currentUser: auth.currentUser
+};
+
+onAuthStateChanged(auth, user => {
+    userState.currentUser = user;
+    console.log("Auth state changed, current user:", user);
+});
+
 
 export type { User };
 
@@ -20,13 +21,16 @@ import {
     signInWithEmailAndPassword as firebaseSignInWithEmailAndPassword,
     createUserWithEmailAndPassword as firebaseCreateUserWithEmailAndPassword,
     signInWithPopup as firebaseSignInWithPopup,
-    signInWithRedirect as firebaseSignInWithRedirect,
     signOut as firebaseSignOut
 } from "firebase/auth";
+import { isDev } from "$lib/config";
 
 export function signInWithEmailAndPassword(email: string, password: string) {
-    return firebaseSignInWithEmailAndPassword(auth, email, password)
-        .catch(() => firebaseCreateUserWithEmailAndPassword(auth, email, password));
+    return firebaseSignInWithEmailAndPassword(auth, email, password);
+}
+
+export function createAccountWithEmailAndPassword(email: string, password: string) {
+    return firebaseCreateUserWithEmailAndPassword(auth, email, password);
 }
 
 export function signInWithGoogle() {
@@ -42,16 +46,21 @@ export {
 } from "firebase/app";
 
 export function whenReady() {
-    return userPromise;
+    return userState.whenReady;
 }
 
-export function getCurrentUser() {
-    if (userPromise.currentUser !== undefined)
-        return userPromise.currentUser;
-    return userPromise.then(() => auth.currentUser);
+export async function getCurrentUser() {
+    await auth.authStateReady();
+    return auth.currentUser;
 }
 
-// 開發環境除錯工具
 if (isDev) {
-    Object.assign(globalThis, { signOut, auth });
+    
+    Object.assign(window, {
+        getCurrentUser,
+        signInWithEmailAndPassword,
+        signInWithGoogle,
+        signOut,
+        auth 
+    });
 }
